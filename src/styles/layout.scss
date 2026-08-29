@@ -10,7 +10,7 @@
 
 .dz-page--tabbed { padding-bottom: calc(130rpx + env(safe-area-inset-bottom)); }
 .dz-safe-top { height: var(--status-bar-height); min-height: env(safe-area-inset-top); }
-.dz-container { width: 100%; margin: 0 auto; padding-right: 30rpx; padding-left: 30rpx; }
+.dz-container { box-sizing: border-box; width: 100%; margin: 0 auto; padding-right: 30rpx; padding-left: 30rpx; }
 
 .dz-page-head {
   display: flex;

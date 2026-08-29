@@ -1,10 +1,12 @@
 <template>
-  <view class="dz-page provider-orders-page">
+  <view class="dz-page dz-page--tabbed provider-orders-page">
     <view class="dz-safe-top" />
     <header class="page-head dz-container">
-      <button aria-label="返回" @tap="goBack">‹</button>
-      <strong class="strong-text">达人订单</strong>
-      <button class="refresh" aria-label="刷新订单" :disabled="loading" @tap="load">↻</button>
+      <view class="head-spacer" aria-hidden="true" />
+      <strong class="strong-text">订单</strong>
+      <button class="refresh" aria-label="刷新订单" :disabled="loading" @tap="load">
+        <image src="/static/icons/refresh.svg" mode="aspectFit" aria-hidden="true" />
+      </button>
     </header>
 
     <scroll-view scroll-x class="tabs" :show-scrollbar="false">
@@ -30,7 +32,9 @@
         @action="load"
       />
       <section v-else-if="!visibleOrders.length" class="empty-state">
-        <i>▧</i>
+        <view class="empty-icon" aria-hidden="true">
+          <image src="/static/tabbar/order-active.svg" mode="aspectFit" />
+        </view>
         <strong class="strong-text">暂无{{ activeLabel }}订单</strong>
         <text>新的订单和履约进度会出现在这里。</text>
       </section>
@@ -87,6 +91,8 @@
         </section>
       </template>
     </main>
+
+    <ProviderTabBar active="orders" />
   </view>
 </template>
 
@@ -95,6 +101,7 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
 import NetworkState from '@/components/NetworkState.vue'
+import ProviderTabBar from '@/components/ProviderTabBar.vue'
 import {
   acceptManagedProviderOrder,
   attachManagedOrderArrivalEvidence,
@@ -142,7 +149,6 @@ const tabs = computed(() => [
 const visibleOrders = computed(() => orders.value.filter((item) => inTab(item.status, activeTab.value)))
 const activeLabel = computed(() => tabs.value.find((item) => item.key === activeTab.value)?.label || '')
 
-function goBack() { uni.navigateBack() }
 function twoDigits(value: number) { return String(value).padStart(2, '0') }
 function timeRange(startsAt: string, endsAt: string) {
   const start = new Date(startsAt)
@@ -343,5 +349,5 @@ onShow(() => { if (guardCurrentPage()) load() })
 
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
-.provider-orders-page{min-height:100vh;background:$dz-surface-page}.page-head{position:sticky;z-index:10;top:0;display:flex;align-items:center;justify-content:space-between;height:92rpx;background:#fff}.page-head button{width:88rpx;height:88rpx;margin:0;padding:0;border:0;background:transparent;font-size:54rpx;line-height:88rpx}.page-head button::after,.tabs button::after,.order-card button::after{display:none}.page-head .strong-text{font-size:31rpx}.page-head .refresh{font-size:34rpx}.tabs{position:sticky;z-index:9;top:calc(92rpx + env(safe-area-inset-top));height:88rpx;border-top:1rpx solid $dz-border-subtle;background:#fff;white-space:nowrap}.tab-row{display:flex;min-width:730rpx;height:88rpx}.tab-row button{position:relative;min-width:140rpx;height:88rpx;margin:0;padding:0;border:0;background:#fff;color:$dz-text-secondary;font-size:21rpx;line-height:88rpx}.tab-row button.active{color:$dz-text-primary;font-weight:750}.tab-row button.active::after{position:absolute;right:42rpx;bottom:0;left:42rpx;height:6rpx;border-radius:3rpx;background:$dz-brand-primary;content:''}.tab-row text{display:inline-block;min-width:28rpx;margin-left:5rpx;border-radius:14rpx;color:#fff;background:#ff6d32;font-size:16rpx;line-height:28rpx}.order-content{padding-top:20rpx;padding-bottom:50rpx}.empty-state{display:flex;min-height:600rpx;flex-direction:column;align-items:center;justify-content:center;color:$dz-text-secondary;text-align:center}.empty-state i{color:$dz-brand-primary;font-size:84rpx;font-style:normal}.empty-state .strong-text{margin-top:18rpx;color:$dz-text-primary;font-size:28rpx}.empty-state text{margin-top:10rpx;font-size:20rpx}.order-card{margin-bottom:18rpx;padding:0 22rpx;border-radius:24rpx;background:#fff;box-shadow:$dz-shadow-card}.order-card>header{display:flex;align-items:center;justify-content:space-between;height:72rpx;border-bottom:1rpx solid $dz-border-subtle}.order-card>header view{display:flex;align-items:center;font-size:22rpx;font-weight:750}.order-card>header i{width:14rpx;height:14rpx;margin-right:9rpx;border-radius:50%}.order-card>header i.orange{background:#ff7438}.order-card>header i.cyan{background:$dz-brand-primary}.order-card>header i.green{background:#4fbd70}.order-card>header i.gray{background:$dz-text-tertiary}.order-card>header text{color:$dz-text-tertiary;font-size:16rpx}.order-main{display:flex;align-items:flex-start;padding:22rpx 0}.customer-avatar{display:flex;align-items:center;justify-content:center;width:88rpx;height:88rpx;flex:none;border-radius:20rpx;color:$dz-brand-deep;background:$dz-brand-soft;font-size:31rpx}.order-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:8rpx;margin-left:16rpx}.order-copy .strong-text{font-size:23rpx}.order-copy text{overflow:hidden;color:$dz-text-secondary;font-size:18rpx;text-overflow:ellipsis;white-space:nowrap}.amount{display:flex;flex-direction:column;align-items:flex-end;gap:8rpx;margin-left:10rpx}.amount small{color:$dz-text-tertiary;font-size:16rpx}.amount .strong-text{color:$dz-price-primary;font-size:28rpx}.note{margin-bottom:18rpx;padding:13rpx 16rpx;border-radius:12rpx;color:$dz-text-secondary;background:#f7f9fa;font-size:18rpx}.evidence{display:flex;align-items:center;width:100%;min-height:90rpx;margin:0 0 16rpx;padding:12rpx;border:0;border-radius:16rpx;background:#f1fbfa;text-align:left}.evidence image{width:70rpx;height:70rpx;flex:none;border-radius:12rpx}.evidence view{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx;margin-left:14rpx}.evidence .strong-text{font-size:20rpx}.evidence text{color:$dz-text-secondary;font-size:17rpx}.evidence b{color:$dz-brand-deep;font-size:18rpx;font-weight:650}.order-card>footer{display:flex;align-items:center;justify-content:space-between;min-height:120rpx;border-top:1rpx solid $dz-border-subtle}.progress-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx;padding:12rpx 10rpx 12rpx 0}.progress-copy .strong-text{font-size:19rpx}.progress-copy text{color:$dz-text-secondary;font-size:17rpx}.progress-copy text.expired{color:#e7653d}.order-card>footer button{min-width:176rpx;height:88rpx;margin:0;padding:0 24rpx;border:0;border-radius:44rpx;color:#fff;background:$dz-gradient-brand;font-size:20rpx;line-height:88rpx}.order-card>footer button:active{opacity:.78;transform:scale(.98)}.order-card>footer button[disabled]{opacity:.45}.order-card>footer button.outline{border:1rpx solid $dz-brand-primary;color:$dz-brand-deep;background:#fff}
+.provider-orders-page{min-height:100vh;background:$dz-surface-page}.page-head{position:sticky;z-index:10;top:0;display:flex;align-items:center;justify-content:space-between;height:92rpx;background:#fff}.head-spacer,.page-head button{width:88rpx;height:88rpx;flex:0 0 88rpx}.page-head button{display:flex;align-items:center;justify-content:center;margin:0;padding:0;border:0;background:transparent}.page-head button::after,.tabs button::after,.order-card button::after{display:none}.page-head .strong-text{font-size:31rpx}.page-head .refresh image{width:38rpx;height:38rpx}.tabs{position:sticky;z-index:9;top:calc(92rpx + env(safe-area-inset-top));height:88rpx;border-top:1rpx solid $dz-border-subtle;background:#fff;white-space:nowrap}.tab-row{display:flex;min-width:730rpx;height:88rpx}.tab-row button{position:relative;min-width:140rpx;height:88rpx;margin:0;padding:0;border:0;background:#fff;color:$dz-text-secondary;font-size:21rpx;line-height:88rpx}.tab-row button.active{color:$dz-text-primary;font-weight:750}.tab-row button.active::after{position:absolute;right:42rpx;bottom:0;left:42rpx;height:6rpx;border-radius:3rpx;background:$dz-brand-primary;content:''}.tab-row text{display:inline-block;min-width:28rpx;margin-left:5rpx;border-radius:14rpx;color:#fff;background:#ff6d32;font-size:16rpx;line-height:28rpx}.order-content{padding-top:20rpx;padding-bottom:50rpx}.empty-state{display:flex;min-height:600rpx;flex-direction:column;align-items:center;justify-content:center;color:$dz-text-secondary;text-align:center}.empty-icon{display:flex;width:108rpx;height:108rpx;align-items:center;justify-content:center;border-radius:34rpx;background:$dz-brand-soft}.empty-icon image{width:60rpx;height:60rpx}.empty-state .strong-text{margin-top:24rpx;color:$dz-text-primary;font-size:28rpx}.empty-state text{margin-top:10rpx;font-size:20rpx}.order-card{margin-bottom:18rpx;padding:0 22rpx;border-radius:24rpx;background:#fff;box-shadow:$dz-shadow-card}.order-card>header{display:flex;align-items:center;justify-content:space-between;height:72rpx;border-bottom:1rpx solid $dz-border-subtle}.order-card>header view{display:flex;align-items:center;font-size:22rpx;font-weight:750}.order-card>header i{width:14rpx;height:14rpx;margin-right:9rpx;border-radius:50%}.order-card>header i.orange{background:#ff7438}.order-card>header i.cyan{background:$dz-brand-primary}.order-card>header i.green{background:#4fbd70}.order-card>header i.gray{background:$dz-text-tertiary}.order-card>header text{color:$dz-text-tertiary;font-size:16rpx}.order-main{display:flex;align-items:flex-start;padding:22rpx 0}.customer-avatar{display:flex;align-items:center;justify-content:center;width:88rpx;height:88rpx;flex:none;border-radius:20rpx;color:$dz-brand-deep;background:$dz-brand-soft;font-size:31rpx}.order-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:8rpx;margin-left:16rpx}.order-copy .strong-text{font-size:23rpx}.order-copy text{overflow:hidden;color:$dz-text-secondary;font-size:18rpx;text-overflow:ellipsis;white-space:nowrap}.amount{display:flex;flex-direction:column;align-items:flex-end;gap:8rpx;margin-left:10rpx}.amount small{color:$dz-text-tertiary;font-size:16rpx}.amount .strong-text{color:$dz-price-primary;font-size:28rpx}.note{margin-bottom:18rpx;padding:13rpx 16rpx;border-radius:12rpx;color:$dz-text-secondary;background:#f7f9fa;font-size:18rpx}.evidence{display:flex;align-items:center;width:100%;min-height:90rpx;margin:0 0 16rpx;padding:12rpx;border:0;border-radius:16rpx;background:#f1fbfa;text-align:left}.evidence image{width:70rpx;height:70rpx;flex:none;border-radius:12rpx}.evidence view{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx;margin-left:14rpx}.evidence .strong-text{font-size:20rpx}.evidence text{color:$dz-text-secondary;font-size:17rpx}.evidence b{color:$dz-brand-deep;font-size:18rpx;font-weight:650}.order-card>footer{display:flex;align-items:center;justify-content:space-between;min-height:120rpx;border-top:1rpx solid $dz-border-subtle}.progress-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx;padding:12rpx 10rpx 12rpx 0}.progress-copy .strong-text{font-size:19rpx}.progress-copy text{color:$dz-text-secondary;font-size:17rpx}.progress-copy text.expired{color:#e7653d}.order-card>footer button{min-width:176rpx;height:88rpx;margin:0;padding:0 24rpx;border:0;border-radius:44rpx;color:#fff;background:$dz-gradient-brand;font-size:20rpx;line-height:88rpx}.order-card>footer button:active{opacity:.78;transform:scale(.98)}.order-card>footer button[disabled]{opacity:.45}.order-card>footer button.outline{border:1rpx solid $dz-brand-primary;color:$dz-brand-deep;background:#fff}
 </style>

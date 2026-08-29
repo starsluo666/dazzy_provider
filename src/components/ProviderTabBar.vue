@@ -20,11 +20,11 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{ active?: 'workbench' | 'messages' | 'profile' }>(), { active: 'workbench' })
+withDefaults(defineProps<{ active?: 'workbench' | 'orders' | 'profile' }>(), { active: 'workbench' })
 
 const tabs = [
   { key: 'workbench', label: '工作台', path: '/pages/workbench/index', icon: '/static/tabbar/home.svg', activeIcon: '/static/tabbar/home-active.svg' },
-  { key: 'messages', label: '消息', path: '/pages/messages/index', icon: '/static/tabbar/message.svg', activeIcon: '/static/tabbar/message-active.svg' },
+  { key: 'orders', label: '订单', path: '/pages/orders/index', icon: '/static/tabbar/order.svg', activeIcon: '/static/tabbar/order-active.svg' },
   { key: 'profile', label: '我的', path: '/pages/profile/index', icon: '/static/tabbar/profile.svg', activeIcon: '/static/tabbar/profile-active.svg' },
 ] as const
 

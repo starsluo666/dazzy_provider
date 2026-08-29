@@ -1,0 +1,27 @@
+$dz-brand: #11c1c4;
+$dz-brand-deep: #08a9b1;
+$dz-brand-soft: #ddf8f7;
+$dz-brand-pale: #f0fbfb;
+$dz-online: #20b86c;
+$dz-orange: #ff5a1f;
+$dz-danger: #ff3e46;
+$dz-danger-soft: #fff4f4;
+$dz-text-primary: #111827;
+$dz-text-secondary: #667085;
+$dz-text-tertiary: #98a2b3;
+$dz-page: #f7fbfb;
+$dz-card: #ffffff;
+$dz-border: #e5eeef;
+$dz-shadow: 0 14rpx 40rpx rgba(31, 76, 82, 0.08);
+$dz-shadow-soft: 0 8rpx 24rpx rgba(31, 76, 82, 0.06);
+$dz-radius-sm: 18rpx;
+$dz-radius-md: 28rpx;
+$dz-radius-lg: 40rpx;
+
+// Compatibility aliases for the management pages migrated from the user app.
+$dz-brand-primary: $dz-brand;
+$dz-price-primary: $dz-orange;
+$dz-surface-page: $dz-page;
+$dz-border-subtle: $dz-border;
+$dz-shadow-card: $dz-shadow;
+$dz-gradient-brand: linear-gradient(135deg, #28d4d0 0%, #11c1c4 55%, #08a9b1 100%);

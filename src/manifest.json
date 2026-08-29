@@ -1,0 +1,23 @@
+{
+  "name": "DAZZY达人端",
+  "appid": "",
+  "description": "DAZZY 达人接单与服务工作台",
+  "versionName": "0.1.0",
+  "versionCode": "10",
+  "transformPx": false,
+  "h5": {},
+  "mp-weixin": {
+    "appid": "",
+    "setting": { "urlCheck": false },
+    "usingComponents": true,
+    "requiredBackgroundModes": ["location"],
+    "requiredPrivateInfos": ["getLocation", "startLocationUpdate", "onLocationChange"],
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于达人开启接单后匹配附近订单、履约安全及紧急求助"
+      }
+    }
+  },
+  "uniStatistics": { "enable": false },
+  "vueVersion": "3"
+}

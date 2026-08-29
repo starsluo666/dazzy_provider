@@ -1,0 +1,50 @@
+@use './tokens.scss' as *;
+
+.dz-page {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: $dz-text-primary;
+  background: $dz-page;
+}
+
+.dz-page--tabbed { padding-bottom: calc(130rpx + env(safe-area-inset-bottom)); }
+.dz-safe-top { height: var(--status-bar-height); min-height: env(safe-area-inset-top); }
+.dz-container { width: 100%; margin: 0 auto; padding-right: 30rpx; padding-left: 30rpx; }
+
+.dz-page-head {
+  display: flex;
+  height: 92rpx;
+  align-items: center;
+  justify-content: space-between;
+}
+.dz-page-head .strong-text { font-size: 31rpx; }
+.dz-page-head button {
+  width: 80rpx;
+  min-height: 72rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: $dz-text-primary;
+  background: transparent;
+  font-size: 52rpx;
+  line-height: 72rpx;
+  text-align: left;
+}
+
+@media screen and (min-width: 480px) {
+  .dz-container { max-width: 430px; padding-right: 16px; padding-left: 16px; }
+  .dz-page--tabbed { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
+
+@media screen and (min-width: 768px) {
+  .dz-container { max-width: 480px; }
+}
+
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .dz-page--tabbed { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

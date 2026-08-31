@@ -1,16 +1,17 @@
 <template>
-  <view class="login-page">
+  <view class="auth-page">
     <view class="dz-safe-top" />
-    <main class="login-shell">
-      <view class="brand-mark"><view class="brand-ring"><i /></view><text>DAZZY</text></view>
-      <view class="heading"><h1>达人工作端</h1><p>登录后管理接单、订单与服务档期</p></view>
-      <view class="form-card">
-        <label><text>手机号</text><input v-model="phone" type="number" maxlength="11" placeholder="请输入手机号" /></label>
-        <label><text>密码</text><input v-model="password" :password="!visible" maxlength="20" placeholder="请输入 8–20 位密码" /><button @tap="visible=!visible">{{ visible ? '隐藏' : '显示' }}</button></label>
-        <view class="agreement" @tap="agreed=!agreed"><view :class="{ checked:agreed }">{{ agreed ? '✓' : '' }}</view><text>我已阅读并同意《用户协议》和《隐私政策》</text></view>
-        <button class="submit" :disabled="submitting" @tap="submit">{{ submitting ? '登录中…' : '登录达人端' }}</button>
-        <text class="hint">仅审核通过的达人账号可进入工作台</text>
+    <main class="auth-shell">
+      <view class="auth-brand"><image src="/static/auth-logo.png" mode="aspectFit" aria-label="乐搭伴" /></view>
+      <view class="auth-heading"><h1>欢迎回来</h1><p>登录达人工作端，开始管理服务</p></view>
+      <view class="auth-form">
+        <view class="auth-mode-title"><text>密码登录</text><view /></view>
+        <label class="auth-field"><input v-model="phone" type="number" maxlength="11" placeholder="请输入手机号" /></label>
+        <label class="auth-field"><input v-model="password" :password="!visible" maxlength="20" placeholder="请输入密码" /><view class="auth-field-action" @tap="visible=!visible">{{ visible ? '隐藏' : '显示' }}</view></label>
+        <view class="auth-inline-link">仅审核通过的达人账号可登录</view>
+        <button class="auth-primary" :disabled="submitting" @tap="submit">{{ submitting ? '登录中…' : '登录' }}</button>
       </view>
+      <view class="auth-agreement" @tap="agreed=!agreed"><view class="agreement-check" :class="{ checked:agreed }">{{ agreed ? '✓' : '' }}</view><view class="agreement-copy">我已阅读并同意 <text>《用户协议》</text> 和 <text>《隐私政策》</text></view></view>
     </main>
   </view>
 </template>
@@ -37,5 +38,5 @@ async function submit(){
 
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
-.login-page{min-height:100vh;background:radial-gradient(circle at 78% 8%,rgba(78,220,216,.2),transparent 30%),linear-gradient(180deg,#f1fbfb,#fff 45%)}.login-shell{width:100%;max-width:430px;margin:0 auto;padding:72rpx 44rpx 60rpx}.brand-mark{display:flex;align-items:center;color:$dz-brand-deep;font-size:25rpx;font-weight:800;letter-spacing:5rpx}.brand-ring{display:flex;width:54rpx;height:54rpx;align-items:center;justify-content:center;margin-right:12rpx;border:6rpx solid $dz-brand;border-radius:50%}.brand-ring i{width:13rpx;height:13rpx;border-radius:50%;background:$dz-orange}.heading{margin-top:64rpx}.heading h1{margin:0;font-size:48rpx;line-height:1.2}.heading p{margin:16rpx 0 0;color:$dz-text-secondary;font-size:23rpx}.form-card{margin-top:54rpx;padding:34rpx 30rpx;border:1rpx solid $dz-border;border-radius:32rpx;background:#fff;box-shadow:$dz-shadow}.form-card label{display:flex;height:102rpx;align-items:center;border-bottom:1rpx solid $dz-border}.form-card label>text{width:110rpx;font-size:22rpx;font-weight:650}.form-card input{height:100%;min-width:0;flex:1;font-size:23rpx}.form-card label button{width:88rpx;min-height:66rpx;margin:0;padding:0;border:0;color:$dz-brand-deep;background:transparent;font-size:20rpx;line-height:66rpx}.agreement{display:flex;align-items:flex-start;margin-top:26rpx;color:$dz-text-secondary;font-size:18rpx;line-height:1.45}.agreement>view{display:flex;width:34rpx;height:34rpx;align-items:center;justify-content:center;margin-right:11rpx;border:2rpx solid #cbd7d9;border-radius:9rpx;color:#fff;flex:0 0 34rpx}.agreement>view.checked{border-color:$dz-brand;background:$dz-brand}.submit{height:84rpx;margin-top:31rpx;border:0;border-radius:44rpx;color:#fff;background:$dz-gradient-brand;font-size:25rpx;font-weight:700;line-height:84rpx;box-shadow:0 12rpx 26rpx rgba(17,193,196,.22)}.submit[disabled]{opacity:.58}.hint{display:block;margin-top:20rpx;color:$dz-text-tertiary;font-size:18rpx;text-align:center}
+.auth-page{min-height:100vh;min-height:100dvh;padding-bottom:calc(36rpx + env(safe-area-inset-bottom));background:#fff;box-sizing:border-box}.auth-shell{width:100%;max-width:430px;margin:0 auto;padding:34rpx 46rpx 0;box-sizing:border-box}.auth-brand{display:flex;height:92rpx;justify-content:center}.auth-brand image{width:300rpx;height:92rpx}.auth-heading{margin-top:42rpx;text-align:center}.auth-heading h1{display:block;margin:0;color:#111b20;font-size:48rpx;font-weight:700;line-height:1.25}.auth-heading p{display:block;margin-top:14rpx;color:$dz-text-secondary;font-size:25rpx;line-height:1.5}.auth-form{margin-top:52rpx}.auth-mode-title{display:flex;align-items:center;gap:18rpx;margin-bottom:32rpx;color:#121c21;font-size:28rpx;font-weight:650}.auth-mode-title view{height:1rpx;flex:1;background:#dfe6e8}.auth-field{display:flex;min-height:98rpx;align-items:center;margin-bottom:24rpx;padding:0 26rpx;border:2rpx solid #e0e6e8;border-radius:18rpx;background:#fff;box-sizing:border-box}.auth-field:focus-within{border-color:rgba(24,199,198,.74);box-shadow:0 0 0 5rpx rgba(24,199,198,.08)}.auth-field input{min-width:0;height:94rpx;flex:1;color:$dz-text-primary;font-size:27rpx}.auth-field-action{display:flex;min-width:72rpx;height:76rpx;align-items:center;justify-content:center;margin-right:-18rpx;padding:0 12rpx;color:$dz-text-secondary;font-size:25rpx;white-space:nowrap}.auth-inline-link{display:flex;min-height:58rpx;align-items:center;justify-content:flex-end;margin-top:-8rpx;color:$dz-text-tertiary;font-size:21rpx}.auth-primary{display:flex;width:100%;height:102rpx;align-items:center;justify-content:center;margin-top:28rpx;border-radius:18rpx;color:#fff;background:$dz-gradient-brand;font-size:31rpx;font-weight:650;box-shadow:0 12rpx 28rpx rgba(8,181,194,.18)}.auth-primary[disabled]{opacity:.58}.auth-agreement{display:flex;align-items:flex-start;justify-content:center;margin-top:54rpx;color:$dz-text-secondary;font-size:21rpx;line-height:1.65}.agreement-check{display:flex;width:30rpx;height:30rpx;flex:0 0 auto;align-items:center;justify-content:center;margin:2rpx 12rpx 0 0;border:2rpx solid #cbd5d8;border-radius:50%;color:#fff;font-size:20rpx;box-sizing:border-box}.agreement-check.checked{border-color:$dz-brand-primary;background:$dz-brand-primary}.agreement-copy{text-align:left}.agreement-copy text{color:$dz-brand-deep}
 </style>

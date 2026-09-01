@@ -6,8 +6,16 @@ export function getManagedProviderOrders(status = '') {
     query: { status: status || undefined },
   })
 }
+export function getManagedProviderOrder(orderNo: string) {
+  return request<DataResponse<ProviderManagedOrder>>(`/providers/me/orders/${orderNo}/`)
+}
 export function acceptManagedProviderOrder(orderNo: string) {
   return request<DataResponse<ProviderManagedOrder>>(`/providers/me/orders/${orderNo}/accept/`, { method: 'POST' })
+}
+export function rejectManagedProviderOrder(orderNo: string, reason: string) {
+  return request<DataResponse<ProviderManagedOrder>>(`/providers/me/orders/${orderNo}/reject/`, {
+    method: 'POST', data: { reason },
+  })
 }
 export function departManagedProviderOrder(orderNo: string) {
   return request<DataResponse<ProviderManagedOrder>>(`/providers/me/orders/${orderNo}/depart/`, { method: 'POST' })

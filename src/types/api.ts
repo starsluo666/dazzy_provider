@@ -127,6 +127,7 @@ export interface ProviderManagedOrder {
   contact_gender: 'mr' | 'ms' | ''
   contact_gender_label: string
   contact_phone_masked: string
+  contact_phone_display: string
   note: string
   service_fee_amount: number
   transport_fee_amount: number
@@ -136,12 +137,18 @@ export interface ProviderManagedOrder {
   payment_expires_at: string
   paid_at: string | null
   accepted_at: string | null
+  provider_rejected_at: string | null
+  provider_rejection_reason: string
   departed_at: string | null
   arrival_photo_url: string | null
   arrival_photo_uploaded_at: string | null
   service_started_at: string | null
   completion_submitted_at: string | null
+  confirmation_expires_at: string | null
   customer_confirmed_at: string | null
+  auto_confirmed_at: string | null
   created_at: string
   acceptance_expires_at: string | null
+  meeting_longitude: string | number | null
+  meeting_latitude: string | number | null
 }

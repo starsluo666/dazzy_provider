@@ -57,6 +57,31 @@ export interface ProviderWorkbench {
   upcoming_order: ProviderUpcomingOrder | null
 }
 
+export interface ProviderIncomeItem {
+  settlement_no: string
+  order_no: string
+  service_name: string
+  status: 'risk_frozen' | 'dispute_frozen' | 'settled' | 'cancelled'
+  status_label: string
+  service_income_amount: number
+  transport_income_amount: number
+  other_income_amount: number
+  settlement_amount: number
+  freeze_until: string
+  settled_at: string | null
+  created_at: string
+}
+
+export interface ProviderIncomeData {
+  summary: {
+    month_income_amount: number
+    pending_amount: number
+    settled_amount: number
+    month_order_count: number
+  }
+  items: ProviderIncomeItem[]
+}
+
 export interface ProviderOnlineSession {
   is_accepting_orders: boolean
   is_online: boolean

@@ -5,12 +5,16 @@ import type {
   ProviderOnlineSession,
   ProviderScheduleDay,
   ProviderWorkbench,
+  ProviderIncomeData,
   ServiceCategory,
 } from '@/types/api'
 import { request } from './http'
 
 export const getProviderWorkbench = () =>
   request<DataResponse<ProviderWorkbench>>('/providers/me/workbench/')
+
+export const getProviderIncome = () =>
+  request<DataResponse<ProviderIncomeData>>('/providers/me/income/')
 
 export const startProviderOnline = (location: ProviderLocationPayload) =>
   request<DataResponse<ProviderOnlineSession>>('/providers/me/online/start/', {

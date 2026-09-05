@@ -270,15 +270,17 @@ function chooseEvidencePhoto() {
   })
 }
 async function runUpdate(order: ProviderManagedOrder, label: string, task: () => Promise<{ data: ProviderManagedOrder }>) {
-  if (busyOrderNo.value) return
+  if (busyOrderNo.value) return false
   busyOrderNo.value = order.order_no
   busyLabel.value = label
   try {
     updateOrder((await task()).data)
     uni.showToast({ title: '订单进度已更新', icon: 'success' })
+    return true
   } catch (reason) {
     const message = getErrorMessage(reason, '操作失败')
     if (message) uni.showToast({ title: message, icon: 'none' })
+    return false
   } finally {
     busyOrderNo.value = ''
   }
@@ -289,14 +291,16 @@ async function accept(order: ProviderManagedOrder) {
     `接受后请于 ${timeRange(order.starts_at, order.ends_at)} 按时提供服务。`,
   )
   if (!confirmed) return
-  await runUpdate(order, '接单中…', () => acceptManagedProviderOrder(order.order_no))
-  activeTab.value = 'pending_service'
+  if (await runUpdate(order, '接单中…', () => acceptManagedProviderOrder(order.order_no))) {
+    activeTab.value = 'pending_service'
+  }
 }
 async function depart(order: ProviderManagedOrder) {
   const confirmed = await confirmAction('确认出发', '确认后用户将看到“达人已出发”，请按约定前往集合地点。')
   if (!confirmed) return
-  await runUpdate(order, '更新中…', () => departManagedProviderOrder(order.order_no))
-  activeTab.value = 'in_progress'
+  if (await runUpdate(order, '更新中…', () => departManagedProviderOrder(order.order_no))) {
+    activeTab.value = 'in_progress'
+  }
 }
 async function uploadEvidence(order: ProviderManagedOrder) {
   if (busyOrderNo.value) return

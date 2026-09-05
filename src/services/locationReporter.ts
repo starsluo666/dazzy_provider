@@ -26,6 +26,7 @@ let latestLocation: ProviderLocationPayload | null = null
 let timer: ReturnType<typeof setInterval> | null = null
 let reporting = false
 let nativeListening = false
+let pollingMode = false
 let errorCallback: ((message: string) => void) | undefined
 let reportedCallback: ((location: ProviderLocationPayload) => void) | undefined
 
@@ -78,7 +79,9 @@ async function sendLatest(force = false) {
   if (!force && Date.now() - lastReportedAt < intervalMs) return
   reporting = true
   try {
-    latestLocation = latestLocation || await getCurrentProviderLocation()
+    if (pollingMode || !latestLocation) {
+      latestLocation = await getCurrentProviderLocation()
+    }
     await updateProviderOnlineLocation(sessionId, latestLocation)
     lastReportedAt = Date.now()
     reportedCallback?.(latestLocation)
@@ -128,6 +131,7 @@ export async function startLocationReporting(options: {
   errorCallback = options.onError
   reportedCallback = options.onReported
   const mode = await startNativeUpdates()
+  pollingMode = mode === 'polling'
   timer = setInterval(() => { void sendLatest(true) }, intervalMs)
   return mode
 }
@@ -142,6 +146,7 @@ export function stopLocationReporting(stopNative = true) {
   sessionId = ''
   latestLocation = null
   lastReportedAt = 0
+  pollingMode = false
   if (!stopNative) return
   const api = wxLocationApi()
   if (nativeListening) {

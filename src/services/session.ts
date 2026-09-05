@@ -26,7 +26,10 @@ export function clearSession() {
 }
 
 export function isAuthenticated(): boolean {
-  return Boolean(getAccessToken() || import.meta.env.VITE_DEMO_USER_PUBLIC_ID)
+  return Boolean(
+    getAccessToken()
+    || (import.meta.env.DEV && import.meta.env.VITE_DEMO_USER_PUBLIC_ID),
+  )
 }
 
 const publicRoutes = ['/pages/auth/login']
@@ -47,6 +50,16 @@ export function currentPageUrl(): string {
 }
 
 let redirecting = false
+export function handleSessionExpired() {
+  const returnUrl = currentPageUrl()
+  clearSession()
+  if (returnUrl.startsWith('/pages/auth/') || redirecting) return
+  redirecting = true
+  uni.reLaunch({
+    url: `/pages/auth/login?redirect=${encodeURIComponent(returnUrl)}`,
+    complete: () => setTimeout(() => { redirecting = false }, 300),
+  })
+}
 export function requireAuthentication(returnUrl = currentPageUrl()): boolean {
   if (isAuthenticated()) return true
   if (!redirecting) {

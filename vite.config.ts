@@ -3,6 +3,9 @@ import uni from '@dcloudio/vite-plugin-uni'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  if (mode === 'production' && env.VITE_DEMO_USER_PUBLIC_ID) {
+    throw new Error('生产构建禁止配置 VITE_DEMO_USER_PUBLIC_ID')
+  }
   return {
     plugins: [uni()],
     server: {

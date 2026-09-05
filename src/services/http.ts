@@ -1,4 +1,4 @@
-import { clearSession, getAccessToken, getRefreshToken, updateTokens } from './session'
+import { clearSession, getAccessToken, getRefreshToken, handleSessionExpired, updateTokens } from './session'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
@@ -64,7 +64,7 @@ export function request<T>(path: string, options: RequestOptions = {}, retried =
         'Content-Type': 'application/json',
         ...(!options.skipAuth && getAccessToken()
           ? { Authorization: `Bearer ${getAccessToken()}` }
-          : import.meta.env.VITE_DEMO_USER_PUBLIC_ID
+          : import.meta.env.DEV && import.meta.env.VITE_DEMO_USER_PUBLIC_ID
             ? { 'X-Dazzy-Demo-User': import.meta.env.VITE_DEMO_USER_PUBLIC_ID }
             : {}),
       },
@@ -77,7 +77,10 @@ export function request<T>(path: string, options: RequestOptions = {}, retried =
         if (response.statusCode === 401 && !options.skipAuth && !retried) {
           refreshAccessToken().then((refreshed) => {
             if (refreshed) request<T>(path, options, true).then(resolve).catch(reject)
-            else reject(new Error('登录已过期，请重新登录。'))
+            else {
+              handleSessionExpired()
+              reject(new Error('登录已过期，请重新登录。'))
+            }
           })
           return
         }
@@ -89,21 +92,41 @@ export function request<T>(path: string, options: RequestOptions = {}, retried =
 }
 
 export function uploadFile<T>(path: string, filePath: string, name = 'file', file?: unknown): Promise<T> {
-  return new Promise((resolve, reject) => {
-    uni.uploadFile({
-      url: `${API_BASE_URL}${path}`,
-      filePath,
-      file,
-      name,
-      header: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
-      timeout: 30000,
-      success: (response) => {
-        let body: unknown
-        try { body = typeof response.data === 'string' ? JSON.parse(response.data) : response.data } catch { body = null }
-        if (response.statusCode >= 200 && response.statusCode < 300) resolve(body as T)
-        else reject(new Error(errorMessage(body, `上传失败（${response.statusCode}）`)))
-      },
-      fail: (error) => reject(new Error(error.errMsg || '文件上传失败')),
-    } as UniApp.UploadFileOption)
-  })
+  function performUpload(retried = false): Promise<T> {
+    return new Promise((resolve, reject) => {
+      uni.uploadFile({
+        url: `${API_BASE_URL}${path}`,
+        filePath,
+        file,
+        name,
+        header: getAccessToken()
+          ? { Authorization: `Bearer ${getAccessToken()}` }
+          : import.meta.env.DEV && import.meta.env.VITE_DEMO_USER_PUBLIC_ID
+            ? { 'X-Dazzy-Demo-User': import.meta.env.VITE_DEMO_USER_PUBLIC_ID }
+            : {},
+        timeout: 30000,
+        success: (response) => {
+          let body: unknown
+          try { body = typeof response.data === 'string' ? JSON.parse(response.data) : response.data } catch { body = null }
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            resolve(body as T)
+            return
+          }
+          if (response.statusCode === 401 && !retried) {
+            refreshAccessToken().then((refreshed) => {
+              if (refreshed) performUpload(true).then(resolve).catch(reject)
+              else {
+                handleSessionExpired()
+                reject(new Error('登录已过期，请重新登录。'))
+              }
+            })
+            return
+          }
+          reject(new Error(errorMessage(body, `上传失败（${response.statusCode}）`)))
+        },
+        fail: (error) => reject(new Error(error.errMsg || '文件上传失败')),
+      } as UniApp.UploadFileOption)
+    })
+  }
+  return performUpload()
 }

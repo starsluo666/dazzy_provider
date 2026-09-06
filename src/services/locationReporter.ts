@@ -140,6 +140,31 @@ export function isReportingSession(value: string | null) {
   return Boolean(value && value === sessionId && timer)
 }
 
+export async function refreshLocationReporting(value: string) {
+  if (!value || value !== sessionId || !timer) {
+    throw new Error('定位上报会话已变化，请重新开启接单')
+  }
+  while (reporting) {
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
+  if (value !== sessionId || !timer) {
+    throw new Error('定位上报会话已变化，请重新开启接单')
+  }
+  reporting = true
+  try {
+    latestLocation = await getCurrentProviderLocation()
+    await updateProviderOnlineLocation(sessionId, latestLocation)
+    lastReportedAt = Date.now()
+    reportedCallback?.(latestLocation)
+  } catch (reason) {
+    const message = (reason as Error).message || '位置上报失败'
+    errorCallback?.(message)
+    throw new Error(message)
+  } finally {
+    reporting = false
+  }
+}
+
 export function stopLocationReporting(stopNative = true) {
   if (timer) clearInterval(timer)
   timer = null

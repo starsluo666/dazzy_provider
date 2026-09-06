@@ -1,6 +1,7 @@
-import { clearSession, getAccessToken, getRefreshToken, handleSessionExpired, updateTokens } from './session'
+import { getAccessToken, getRefreshToken, handleSessionExpired, updateTokens } from './session'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+const AUTH_REQUEST_TIMEOUT = 12000
 
 interface RequestOptions {
   query?: Record<string, string | number | undefined>
@@ -9,33 +10,56 @@ interface RequestOptions {
   skipAuth?: boolean
 }
 
-let refreshPromise: Promise<boolean> | null = null
+type RefreshResult =
+  | { status: 'refreshed' }
+  | { status: 'expired' }
+  | { status: 'unavailable'; message: string }
 
-function refreshAccessToken(): Promise<boolean> {
+let refreshPromise: Promise<RefreshResult> | null = null
+
+function refreshAccessToken(): Promise<RefreshResult> {
   if (refreshPromise) return refreshPromise
   const refresh = getRefreshToken()
-  if (!refresh) return Promise.resolve(false)
+  if (!refresh) return Promise.resolve({ status: 'expired' })
   refreshPromise = new Promise((resolve) => {
     uni.request({
       url: `${API_BASE_URL}/auth/token/refresh/`,
       method: 'POST',
       data: { refresh },
       header: { 'Content-Type': 'application/json' },
+      timeout: AUTH_REQUEST_TIMEOUT,
       success: (response) => {
         const body = response.data as { access?: string; refresh?: string }
         if (response.statusCode === 200 && body.access) {
           updateTokens(body.access, body.refresh)
-          resolve(true)
+          resolve({ status: 'refreshed' })
+        } else if (response.statusCode === 401 || response.statusCode === 403) {
+          resolve({ status: 'expired' })
         } else {
-          clearSession()
-          resolve(false)
+          resolve({
+            status: 'unavailable',
+            message: errorMessage(response.data, `登录状态刷新失败（${response.statusCode}）`),
+          })
         }
       },
-      fail: () => resolve(false),
+      fail: () => resolve({
+        status: 'unavailable',
+        message: '网络连接失败，暂时无法刷新登录状态，请检查网络后重试',
+      }),
       complete: () => { refreshPromise = null },
     })
   })
   return refreshPromise
+}
+
+async function retryAfterUnauthorized<T>(retry: () => Promise<T>): Promise<T> {
+  const result = await refreshAccessToken()
+  if (result.status === 'refreshed') return retry()
+  if (result.status === 'expired') {
+    handleSessionExpired()
+    throw new Error('登录已过期，请重新登录。')
+  }
+  throw new Error(result.message)
 }
 
 function errorMessage(body: unknown, fallback: string): string {
@@ -68,20 +92,21 @@ export function request<T>(path: string, options: RequestOptions = {}, retried =
             ? { 'X-Dazzy-Demo-User': import.meta.env.VITE_DEMO_USER_PUBLIC_ID }
             : {}),
       },
-      timeout: 12000,
+      timeout: AUTH_REQUEST_TIMEOUT,
       success: (response) => {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           resolve(response.data as T)
           return
         }
-        if (response.statusCode === 401 && !options.skipAuth && !retried) {
-          refreshAccessToken().then((refreshed) => {
-            if (refreshed) request<T>(path, options, true).then(resolve).catch(reject)
-            else {
-              handleSessionExpired()
-              reject(new Error('登录已过期，请重新登录。'))
-            }
-          })
+        if (response.statusCode === 401 && !options.skipAuth) {
+          if (retried) {
+            handleSessionExpired()
+            reject(new Error('登录已过期，请重新登录。'))
+            return
+          }
+          retryAfterUnauthorized(() => request<T>(path, options, true))
+            .then(resolve)
+            .catch(reject)
           return
         }
         reject(new Error(errorMessage(response.data, `请求失败（${response.statusCode}）`)))
@@ -112,14 +137,15 @@ export function uploadFile<T>(path: string, filePath: string, name = 'file', fil
             resolve(body as T)
             return
           }
-          if (response.statusCode === 401 && !retried) {
-            refreshAccessToken().then((refreshed) => {
-              if (refreshed) performUpload(true).then(resolve).catch(reject)
-              else {
-                handleSessionExpired()
-                reject(new Error('登录已过期，请重新登录。'))
-              }
-            })
+          if (response.statusCode === 401) {
+            if (retried) {
+              handleSessionExpired()
+              reject(new Error('登录已过期，请重新登录。'))
+              return
+            }
+            retryAfterUnauthorized(() => performUpload(true))
+              .then(resolve)
+              .catch(reject)
             return
           }
           reject(new Error(errorMessage(body, `上传失败（${response.statusCode}）`)))

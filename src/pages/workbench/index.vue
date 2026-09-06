@@ -120,6 +120,7 @@ import ProviderTabBar from '@/components/ProviderTabBar.vue'
 import {
   getCurrentProviderLocation,
   isReportingSession,
+  refreshLocationReporting,
   startLocationReporting,
   stopLocationReporting,
 } from '@/services/locationReporter'
@@ -217,8 +218,12 @@ async function beginReporter(session: ProviderOnlineSession, initialLocation: Aw
 }
 
 async function resumeReporter() {
-  if (!data.value?.is_online || !data.value.session_id || isReportingSession(data.value.session_id)) return
+  if (!data.value?.is_online || !data.value.session_id) return
   try {
+    if (isReportingSession(data.value.session_id)) {
+      await refreshLocationReporting(data.value.session_id)
+      return
+    }
     const location = await getCurrentProviderLocation()
     const session = (await updateProviderOnlineLocation(data.value.session_id, location)).data
     applySession(session)

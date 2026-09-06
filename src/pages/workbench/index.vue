@@ -149,11 +149,15 @@ const customerLabel = computed(() => {
 })
 const onlineHelper = computed(() => {
   if (data.value?.admin_order_restricted) return data.value.admin_restriction_reason || '平台当前限制接单，请联系客服处理'
+  if (data.value?.is_online && data.value.online_timeout_minutes === 0) return '保持在线，系统使用最近一次位置；停止接单时请手动下线'
   return data.value?.is_online ? '保持在线，系统将为您推荐附近订单' : '开启后将获取定位并推荐附近订单'
 })
 const locationStatus = computed(() => {
   if (!data.value?.location_updated_at) return data.value?.is_online ? '正在获取定位' : '定位未开启'
-  return `${data.value.is_online ? '定位正常' : '定位已失效'} · ${relativeTime(data.value.location_updated_at)}`
+  const state = data.value.is_online
+    ? data.value.online_timeout_minutes === 0 ? '使用最近位置' : '定位正常'
+    : '定位已失效'
+  return `${state} · ${relativeTime(data.value.location_updated_at)}`
 })
 
 function formatHours(value: number) {
@@ -204,7 +208,11 @@ async function beginReporter(session: ProviderOnlineSession, initialLocation: Aw
     initialLocation,
     ...reporterCallbacks(),
   })
-  if (mode === 'foreground') locationWarning.value = '当前为前台定位，离开小程序后可能自动离线'
+  if (mode === 'foreground') {
+    locationWarning.value = session.online_timeout_minutes === 0
+      ? '当前为前台定位，离开小程序后位置将停止更新；停止接单时请手动下线'
+      : '当前为前台定位，离开小程序后可能自动离线'
+  }
   if (mode === 'polling') locationWarning.value = '当前设备不支持持续定位，将按间隔刷新位置'
 }
 
@@ -216,7 +224,10 @@ async function resumeReporter() {
     applySession(session)
     await beginReporter(session, location)
   } catch (reason) {
-    locationWarning.value = getErrorMessage(reason, '定位恢复失败，30分钟未更新将自动离线')
+    const fallback = data.value.online_timeout_minutes === 0
+      ? '定位恢复失败，当前继续使用最近一次位置；请尽快恢复定位或手动下线'
+      : `定位恢复失败，${data.value.online_timeout_minutes}分钟未更新将自动离线`
+    locationWarning.value = getErrorMessage(reason, fallback)
   }
 }
 

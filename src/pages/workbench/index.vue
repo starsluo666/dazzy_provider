@@ -133,6 +133,7 @@ import {
 import { guardCurrentPage } from '@/services/session'
 import type { ProviderOnlineSession, ProviderWorkbench } from '@/types/api'
 import { formatAmount, getErrorMessage } from '@/utils/formatters'
+import { businessClock, businessDateKey, businessTimeParts } from '@/utils/businessTime'
 
 const data = ref<ProviderWorkbench | null>(null)
 const loading = ref(true)
@@ -174,16 +175,12 @@ function relativeTime(value: string) {
   if (minutes < 60) return `${minutes}分钟前更新`
   return `${Math.floor(minutes / 60)}小时前更新`
 }
-function two(value: number) { return String(value).padStart(2, '0') }
 function timeRange(startsAt: string, endsAt: string) {
-  const start = new Date(startsAt)
-  const end = new Date(endsAt)
-  return `${two(start.getHours())}:${two(start.getMinutes())}–${two(end.getHours())}:${two(end.getMinutes())}`
+  return `${businessClock(startsAt)}–${businessClock(endsAt)}`
 }
 function orderDateLabel(value: string) {
-  const date = new Date(value)
-  const today = new Date()
-  return date.toDateString() === today.toDateString() ? '今天' : `${date.getMonth() + 1}月${date.getDate()}日`
+  const date = businessTimeParts(value)
+  return businessDateKey(value) === businessDateKey() ? '今天' : `${date.month}月${date.day}日`
 }
 
 function applySession(session: ProviderOnlineSession) {

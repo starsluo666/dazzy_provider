@@ -83,11 +83,12 @@ import {
 import { guardCurrentPage } from '@/services/session'
 import type { ProviderScheduleDay } from '@/types/api'
 import { getErrorMessage } from '@/utils/formatters'
+import { businessDateKey, businessDateKeyParts, shiftBusinessDateKey } from '@/utils/businessTime'
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
-const start = ref(monday(new Date()))
+const start = ref(monday(businessDateKey()))
 const days = ref<ProviderScheduleDay[]>([])
-const selected = ref(Math.min(6, Math.max(0, (new Date().getDay() + 6) % 7)))
+const selected = ref((businessDateKeyParts(businessDateKey()).weekday + 6) % 7)
 const loading = ref(true)
 const error = ref('')
 const sheet = ref(false)
@@ -95,32 +96,25 @@ const saving = ref(false)
 const daySaving = ref(false)
 const form = reactive({ starts_at: '09:00', ends_at: '12:00', repeat_weekly: true, copy_weekdays: [] as number[] })
 
-function monday(value: Date) {
-  const date = new Date(value)
-  date.setHours(0, 0, 0, 0)
-  date.setDate(date.getDate() - ((date.getDay() + 6) % 7))
-  return date
-}
-
-function iso(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+function monday(value: string) {
+  return shiftBusinessDateKey(value, -((businessDateKeyParts(value).weekday + 6) % 7))
 }
 
 const currentDay = computed(() => days.value[selected.value])
 const displayPeriods = computed(() => currentDay.value?.is_closed
   ? currentDay.value.periods.filter((item) => item.status === 'booked')
   : currentDay.value?.periods || [])
-const canManageDay = computed(() => Boolean(currentDay.value && currentDay.value.date >= iso(new Date())))
+const canManageDay = computed(() => Boolean(currentDay.value && currentDay.value.date >= businessDateKey()))
 const copyOptions = computed(() => weekdays
   .map((label, value) => ({ label: `周${label}`, value }))
   .filter((item) => item.value !== selected.value))
 const rangeLabel = computed(() => {
-  const end = new Date(start.value)
-  end.setDate(end.getDate() + 6)
-  return `${start.value.getMonth() + 1}月${start.value.getDate()}日–${end.getMonth() + 1}月${end.getDate()}日`
+  const startParts = businessDateKeyParts(start.value)
+  const endParts = businessDateKeyParts(shiftBusinessDateKey(start.value, 6))
+  return `${startParts.month}月${startParts.day}日–${endParts.month}月${endParts.day}日`
 })
 const dayTitle = computed(() => currentDay.value
-  ? `${new Date(`${currentDay.value.date}T00:00:00`).getMonth() + 1}月${dayNumber(currentDay.value.date)}日 周${weekdays[selected.value]}`
+  ? `${businessDateKeyParts(currentDay.value.date).month}月${businessDateKeyParts(currentDay.value.date).day}日 周${weekdays[selected.value]}`
   : '')
 const weeklySummary = computed(() => {
   const periods = currentDay.value?.periods.filter((item) => item.source === 'weekly' && item.status === 'available') || []
@@ -129,22 +123,20 @@ const weeklySummary = computed(() => {
     : '暂无每周模板'
 })
 
-function dayNumber(value: string) { return new Date(`${value}T00:00:00`).getDate() }
+function dayNumber(value: string) { return businessDateKeyParts(value).day }
 function clock(value: string) { return value.slice(0, 5) }
 function goBack() { uni.navigateBack() }
 function showRule() { uni.showToast({ title: '已预约时段不可修改；重叠时段不可重复添加', icon: 'none' }) }
 
 function moveWeek(offset: number) {
-  const date = new Date(start.value)
-  date.setDate(date.getDate() + offset)
-  start.value = date
+  start.value = shiftBusinessDateKey(start.value, offset)
   selected.value = 0
   load()
 }
 
 function resetWeek() {
-  start.value = monday(new Date())
-  selected.value = (new Date().getDay() + 6) % 7
+  start.value = monday(businessDateKey())
+  selected.value = (businessDateKeyParts(businessDateKey()).weekday + 6) % 7
   load()
 }
 
@@ -152,7 +144,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    days.value = (await getProviderSchedule(iso(start.value))).data.days
+    days.value = (await getProviderSchedule(start.value)).data.days
   } catch (reason) {
     error.value = getErrorMessage(reason)
   } finally {

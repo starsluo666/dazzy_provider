@@ -35,13 +35,13 @@ import { onShow } from '@dcloudio/uni-app'
 import NetworkState from '@/components/NetworkState.vue'
 import { getProviderIncome } from '@/services/providers'
 import type { ProviderIncomeData } from '@/types/api'
-import { formatAmount, getErrorMessage } from '@/utils/formatters'
+import { formatAmount, formatBusinessShortDate, getErrorMessage } from '@/utils/formatters'
 
 const data = ref<ProviderIncomeData | null>(null)
 const loading = ref(true)
 const error = ref('')
 function goBack() { uni.navigateBack() }
-function formatDate(value: string) { return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) }
+const formatDate = formatBusinessShortDate
 async function load() {
   loading.value = true
   error.value = ''

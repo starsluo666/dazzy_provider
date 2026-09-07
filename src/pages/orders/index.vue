@@ -116,7 +116,7 @@ import {
 } from '@/services/orders'
 import { guardCurrentPage } from '@/services/session'
 import type { ProviderManagedOrder } from '@/types/api'
-import { formatAmount, getErrorMessage } from '@/utils/formatters'
+import { formatAmount, formatBusinessDateTime, formatBusinessMonthDay, formatOrderTimeRange, getErrorMessage } from '@/utils/formatters'
 
 type OrderTab = 'pending_acceptance' | 'pending_service' | 'in_progress' | 'support' | 'completed' | 'all'
 type LocationEvidence = { longitude: number; latitude: number; accuracy_m?: number }
@@ -154,19 +154,14 @@ const tabs = computed(() => [
 const visibleOrders = computed(() => orders.value.filter((item) => inTab(item.status, activeTab.value)))
 const activeLabel = computed(() => tabs.value.find((item) => item.key === activeTab.value)?.label || '')
 
-function twoDigits(value: number) { return String(value).padStart(2, '0') }
 function timeRange(startsAt: string, endsAt: string) {
-  const start = new Date(startsAt)
-  const end = new Date(endsAt)
-  return `${start.getMonth() + 1}月${start.getDate()}日 ${twoDigits(start.getHours())}:${twoDigits(start.getMinutes())}–${twoDigits(end.getHours())}:${twoDigits(end.getMinutes())}`
+  return formatOrderTimeRange(startsAt, endsAt)
 }
 function shortDate(value: string) {
-  const date = new Date(value)
-  return `${date.getMonth() + 1}月${date.getDate()}日`
+  return formatBusinessMonthDay(value)
 }
 function dateTime(value: string) {
-  const date = new Date(value)
-  return `${shortDate(value)} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`
+  return formatBusinessDateTime(value)
 }
 function statusLabel(status: string) {
   return {

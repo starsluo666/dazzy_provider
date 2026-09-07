@@ -161,7 +161,7 @@ import {
 } from '@/services/orders'
 import { guardCurrentPage } from '@/services/session'
 import type { ProviderManagedOrder } from '@/types/api'
-import { formatAmount, getErrorMessage } from '@/utils/formatters'
+import { formatAmount, formatBusinessDateTime, formatOrderTimeRange, getErrorMessage } from '@/utils/formatters'
 
 type LocationEvidence = { longitude: number; latitude: number; accuracy_m?: number }
 type SelectedPhoto = { path: string; file?: unknown }
@@ -237,16 +237,11 @@ const timeline = computed<TimelineItem[]>(() => {
 function addMilestone(rows: TimelineItem[], label: string, value: string | null) {
   if (value) rows.push({ label, time: dateTime(value), done: true })
 }
-function twoDigits(value: number) { return String(value).padStart(2, '0') }
 function dateTime(value: string | null) {
-  if (!value) return ''
-  const date = new Date(value)
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`
+  return value ? formatBusinessDateTime(value) : ''
 }
 function timeRange(startsAt: string, endsAt: string) {
-  const start = new Date(startsAt)
-  const end = new Date(endsAt)
-  return `${start.getFullYear()}年${start.getMonth() + 1}月${start.getDate()}日 ${twoDigits(start.getHours())}:${twoDigits(start.getMinutes())}–${twoDigits(end.getHours())}:${twoDigits(end.getMinutes())}`
+  return formatOrderTimeRange(startsAt, endsAt, true)
 }
 function addressLabel(item: ProviderManagedOrder) {
   return [item.meeting_location_name, item.meeting_address]

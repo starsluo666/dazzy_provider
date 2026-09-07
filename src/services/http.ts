@@ -1,6 +1,6 @@
 import { getAccessToken, getRefreshToken, handleSessionExpired, updateTokens } from './session'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '')
 const AUTH_REQUEST_TIMEOUT = 12000
 
 interface RequestOptions {

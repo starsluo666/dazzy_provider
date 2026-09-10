@@ -32,11 +32,11 @@
           <text class="hero-tip">{{ nextStepCopy(order) }}</text>
         </section>
 
-        <section v-if="order.provider_rejection_reason" class="support-alert">
+        <section v-if="order.provider_rejected_at" class="support-alert">
           <view class="alert-icon">!</view>
           <view>
             <strong class="strong-text">已转交平台客服处理</strong>
-            <text>拒单原因：{{ order.provider_rejection_reason }}</text>
+            <text>平台客服将在15分钟内联系用户；未形成有效联系时，系统将自动全额退款。</text>
           </view>
         </section>
 
@@ -128,14 +128,10 @@
       <section class="reject-dialog">
         <view class="dialog-mark">!</view>
         <strong class="strong-text">确认拒绝这笔订单？</strong>
-        <text>拒单后订单将转交平台客服处理，请填写真实原因，方便客服及时联系用户。</text>
-        <view class="reason-field">
-          <textarea v-model="rejectReason" maxlength="200" placeholder="例如：预约时间与现有行程冲突" />
-          <small>{{ rejectReason.length }}/200</small>
-        </view>
+        <text>拒单后订单将转交平台客服。客服会在15分钟内联系用户，未形成有效联系时系统将自动全额退款。</text>
         <view class="dialog-actions">
           <button :disabled="busy" @tap="closeReject">暂不拒绝</button>
-          <button class="danger-button" :disabled="busy || rejectReason.trim().length < 2" @tap="confirmReject">
+          <button class="danger-button" :disabled="busy" @tap="confirmReject">
             {{ busy ? '提交中…' : '确认拒绝' }}
           </button>
         </view>
@@ -174,7 +170,6 @@ const error = ref('')
 const busy = ref(false)
 const busyLabel = ref('处理中…')
 const rejectVisible = ref(false)
-const rejectReason = ref('')
 const money = formatAmount
 
 const phoneIsMasked = computed(() => !order.value?.contact_phone_display || order.value.contact_phone_display.includes('*'))
@@ -199,7 +194,7 @@ const timeline = computed<TimelineItem[]>(() => {
   ]
   if (item.provider_rejected_at) {
     rows.push({ label: '已拒绝接单', time: dateTime(item.provider_rejected_at), done: true, danger: true })
-    rows.push({ label: '等待平台客服处理', copy: '平台将联系用户并处理退款或改派', current: true, danger: true })
+    rows.push({ label: '等待平台客服处理', copy: '15分钟内未形成有效联系将自动全额退款', current: true, danger: true })
     return rows
   }
   addMilestone(rows, '达人已接单', item.accepted_at)
@@ -387,16 +382,13 @@ function performPrimaryAction() {
   if (order.value.status === 'in_service') return completeOrder()
 }
 function openReject() {
-  rejectReason.value = ''
   rejectVisible.value = true
 }
 function closeReject() {
   if (!busy.value) rejectVisible.value = false
 }
 async function confirmReject() {
-  const reason = rejectReason.value.trim()
-  if (reason.length < 2) return
-  const updated = await runUpdate('提交中…', () => rejectManagedProviderOrder(orderNo.value, reason))
+  const updated = await runUpdate('提交中…', () => rejectManagedProviderOrder(orderNo.value))
   if (updated) rejectVisible.value = false
 }
 function callCustomer() {

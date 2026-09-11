@@ -1,5 +1,7 @@
 export interface DataResponse<T> { data: T }
 
+export type ProviderIdentityStatus = 'unverified' | 'pending' | 'verified' | 'rejected'
+
 export interface CurrentUser {
   public_id: string
   phone: string
@@ -39,6 +41,11 @@ export interface ProviderWorkbench {
   session_id: string | null
   admin_order_restricted: boolean
   admin_restriction_reason: string
+  identity_status: ProviderIdentityStatus
+  identity_status_label: string
+  is_profile_complete: boolean
+  can_accept_orders: boolean
+  onboarding_blockers: string[]
   service_city_code: string
   service_city_name: string
   max_service_radius_km: number
@@ -55,6 +62,33 @@ export interface ProviderWorkbench {
   last_7_days_service_trend: ProviderTrendItem[]
   service_count: number
   upcoming_order: ProviderUpcomingOrder | null
+}
+
+export interface ProviderIdentity {
+  identity_status: ProviderIdentityStatus
+  identity_status_label: string
+  identity_real_name: string
+  identity_number_masked: string
+  identity_front_photo_id: string | null
+  identity_back_photo_id: string | null
+  identity_face_photo_id: string | null
+  identity_front_photo_url: string | null
+  identity_back_photo_url: string | null
+  identity_face_photo_url: string | null
+  identity_submitted_at: string | null
+  identity_reviewed_at: string | null
+  identity_rejection_reason: string
+}
+
+export interface ProviderProfileData {
+  bio: string
+  lifestyle_photo_id: string | null
+  lifestyle_photo_url: string | null
+  service_city_code: string
+  service_city_name: string
+  max_service_radius_km: number
+  is_profile_complete: boolean
+  updated_at: string
 }
 
 export interface ProviderIncomeItem {

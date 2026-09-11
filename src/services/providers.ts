@@ -6,15 +6,42 @@ import type {
   ProviderScheduleDay,
   ProviderWorkbench,
   ProviderIncomeData,
+  ProviderIdentity,
+  ProviderProfileData,
   ServiceCategory,
 } from '@/types/api'
-import { request } from './http'
+import { request, uploadFile } from './http'
 
 export const getProviderWorkbench = () =>
   request<DataResponse<ProviderWorkbench>>('/providers/me/workbench/')
 
 export const getProviderIncome = () =>
   request<DataResponse<ProviderIncomeData>>('/providers/me/income/')
+
+export const getProviderIdentity = () =>
+  request<DataResponse<ProviderIdentity>>('/providers/me/identity/')
+
+export const saveProviderIdentity = (data: Record<string, unknown>) =>
+  request<DataResponse<ProviderIdentity>>('/providers/me/identity/', { method: 'PATCH', data })
+
+export const submitProviderIdentity = () =>
+  request<DataResponse<ProviderIdentity>>('/providers/me/identity/submit/', { method: 'POST', data: {} })
+
+export const uploadProviderIdentityPhoto = (filePath: string, file?: unknown) =>
+  uploadFile<DataResponse<{ id: string; url: string }>>(
+    '/media/provider-identities/', filePath, 'file', file,
+  )
+
+export const getProviderProfile = () =>
+  request<DataResponse<ProviderProfileData>>('/providers/me/profile/')
+
+export const saveProviderProfile = (data: Record<string, unknown>) =>
+  request<DataResponse<ProviderProfileData>>('/providers/me/profile/', { method: 'PATCH', data })
+
+export const uploadProviderLifestylePhoto = (filePath: string, file?: unknown) =>
+  uploadFile<DataResponse<{ id: string; url: string }>>(
+    '/media/provider-lifestyle-photos/', filePath, 'file', file,
+  )
 
 export const startProviderOnline = (location: ProviderLocationPayload) =>
   request<DataResponse<ProviderOnlineSession>>('/providers/me/online/start/', {

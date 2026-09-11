@@ -16,9 +16,18 @@
           </view>
           <view class="identity-copy">
             <strong class="strong-text">{{ data.nickname || '达人' }}</strong>
-            <view><image src="/static/icons/check.svg" mode="aspectFit" /><text>已认证</text></view>
+            <view><image src="/static/icons/check.svg" mode="aspectFit" /><text>{{ data.identity_status_label }}</text></view>
           </view>
         </header>
+
+        <section v-if="!data.can_accept_orders" class="onboarding-card">
+          <view class="onboarding-head"><view><text>接单准备</text><strong class="strong-text">还差 {{ data.onboarding_blockers.length }} 项</strong></view><text>{{ onboardingProgress }}</text></view>
+          <view class="onboarding-steps">
+            <button :class="{done:data.identity_status==='verified'}" @tap="openIdentity"><i>{{data.identity_status==='verified'?'✓':'1'}}</i><view><strong>实名认证</strong><text>{{identityStepCopy}}</text></view><b>›</b></button>
+            <button :class="{done:data.is_profile_complete}" @tap="openProviderProfile"><i>{{data.is_profile_complete?'✓':'2'}}</i><view><strong>完善达人资料</strong><text>生活照、简介和服务城市</text></view><b>›</b></button>
+            <button :class="{done:!data.onboarding_blockers.some(item=>item.includes('服务'))}" @tap="openServices"><i>{{!data.onboarding_blockers.some(item=>item.includes('服务'))?'✓':'3'}}</i><view><strong>配置服务</strong><text>至少添加并启用一项服务</text></view><b>›</b></button>
+          </view>
+        </section>
 
         <section class="online-hero" :class="{ offline: !data.is_online }">
           <view class="online-main">
@@ -36,7 +45,7 @@
             <switch
               class="online-switch"
               :checked="data.is_online"
-              :disabled="toggling || data.admin_order_restricted"
+              :disabled="toggling || !data.can_accept_orders"
               color="#11C1C4"
               aria-label="在线接单开关"
               @change="toggleOnline"
@@ -142,6 +151,13 @@ const toggling = ref(false)
 const alarming = ref(false)
 const locationWarning = ref('')
 
+const onboardingProgress = computed(() => data.value?.identity_status === 'verified' ? '继续完善即可开启接单' : '完成后开放在线接单')
+const identityStepCopy = computed(() => {
+  if (data.value?.identity_status === 'pending') return '资料审核中'
+  if (data.value?.identity_status === 'rejected') return '未通过，请修改后重试'
+  return data.value?.identity_status === 'verified' ? '身份核验已通过' : '提交实名信息与认证材料'
+})
+
 const trendItems = computed(() => data.value?.last_7_days_service_trend || [])
 const maxTrend = computed(() => Math.max(1, ...trendItems.value.map(item => item.service_hours)))
 const customerLabel = computed(() => {
@@ -150,6 +166,7 @@ const customerLabel = computed(() => {
   return `${order.customer_name || '预约用户'}${order.customer_gender_label || ''}`
 })
 const onlineHelper = computed(() => {
+  if (!data.value?.can_accept_orders) return data.value?.onboarding_blockers[0] || '请先完成接单准备'
   if (data.value?.admin_order_restricted) return data.value.admin_restriction_reason || '平台当前限制接单，请联系客服处理'
   if (data.value?.is_online && data.value.online_timeout_minutes === 0) return '保持在线，系统使用最近一次位置；停止接单时请手动下线'
   return data.value?.is_online ? '保持在线，系统将为您推荐附近订单' : '开启后将获取定位并推荐附近订单'
@@ -264,6 +281,9 @@ function openUpcomingOrder() {
   uni.navigateTo({ url: `/pages/orders/index?orderNo=${encodeURIComponent(data.value.upcoming_order.order_no)}` })
 }
 function openPending() { uni.navigateTo({ url: '/pages/orders/index' }) }
+function openIdentity(){ uni.navigateTo({url:'/pages/identity/index'}) }
+function openProviderProfile(){ uni.navigateTo({url:'/pages/provider-profile/index'}) }
+function openServices(){ uni.navigateTo({url:'/pages/services/index'}) }
 
 function confirmAlarm() {
   if (alarming.value) return
@@ -310,6 +330,7 @@ onShow(() => { if (guardCurrentPage()) void load() })
 @use '../../styles/tokens.scss' as *;
 .workbench-page{position:relative;overflow:hidden;background:linear-gradient(180deg,#f4fcfc 0,#fff 290rpx,#f8fbfb 100%)}.workbench-content{position:relative;z-index:1;padding-top:26rpx}.ambient{position:absolute;border-radius:50%;background:rgba(104,222,220,.12);filter:blur(1rpx);pointer-events:none}.ambient-one{top:40rpx;right:-105rpx;width:390rpx;height:390rpx}.ambient-two{top:170rpx;right:35rpx;width:180rpx;height:180rpx;border:36rpx solid rgba(255,255,255,.32);background:transparent}
 .identity-head{display:flex;align-items:center;min-height:150rpx;padding:10rpx 12rpx}.avatar{display:flex;overflow:hidden;width:112rpx;height:112rpx;align-items:center;justify-content:center;border:5rpx solid rgba(255,255,255,.9);border-radius:50%;color:$dz-brand-deep;background:$dz-brand-soft;box-shadow:$dz-shadow-soft;font-size:38rpx;font-weight:750}.avatar image{width:100%;height:100%}.identity-copy{display:flex;gap:11rpx;margin-left:22rpx;flex-direction:column}.identity-copy>.strong-text{font-size:38rpx;line-height:1.1}.identity-copy>view{display:flex;align-items:center;color:$dz-brand-deep;font-size:22rpx}.identity-copy image{width:34rpx;height:34rpx;margin-right:8rpx}
+.onboarding-card{margin:14rpx 0 24rpx;padding:25rpx;border:1rpx solid #bdeae8;border-radius:29rpx;background:#fff;box-shadow:$dz-shadow-soft}.onboarding-head{display:flex;align-items:flex-end;justify-content:space-between}.onboarding-head>view{display:flex;gap:6rpx;flex-direction:column}.onboarding-head>view>text{color:$dz-brand;font-size:19rpx;font-weight:700}.onboarding-head strong{font-size:28rpx}.onboarding-head>text{color:$dz-text-tertiary;font-size:18rpx}.onboarding-steps{margin-top:18rpx}.onboarding-steps button{display:flex;width:100%;min-height:94rpx;align-items:center;margin:0;padding:12rpx 0;border:0;border-top:1rpx solid $dz-border;background:#fff;text-align:left}.onboarding-steps i{display:flex;width:44rpx;height:44rpx;flex:none;align-items:center;justify-content:center;border-radius:50%;color:#fff;background:#aebabb;font-size:19rpx;font-style:normal}.onboarding-steps button.done i{background:$dz-brand}.onboarding-steps button>view{display:flex;gap:5rpx;margin-left:15rpx;flex:1;flex-direction:column}.onboarding-steps strong{font-size:22rpx}.onboarding-steps button.done strong{color:$dz-brand-deep}.onboarding-steps text{color:$dz-text-secondary;font-size:18rpx}.onboarding-steps b{color:$dz-text-tertiary;font-size:34rpx;font-weight:400}
 .online-hero{position:relative;margin-top:14rpx;padding:34rpx 30rpx 30rpx;border:2rpx solid rgba(17,193,196,.7);border-radius:30rpx;background:linear-gradient(135deg,#f7ffff 0,#e6fbfb 55%,#c9f5f3 100%);box-shadow:0 15rpx 36rpx rgba(8,169,177,.11)}.online-main{display:flex;align-items:center}.online-check{display:flex;width:92rpx;height:92rpx;flex:0 0 92rpx;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(145deg,#0ec6c8,#08a9b1);box-shadow:0 12rpx 28rpx rgba(8,169,177,.22)}.online-check image{width:70rpx;height:70rpx}.online-copy{min-width:0;margin-left:24rpx;flex:1}.online-copy>.strong-text{display:block;color:$dz-brand-deep;font-size:42rpx;line-height:1.2}.location-line{display:flex;align-items:center;margin-top:14rpx;color:$dz-text-secondary;font-size:22rpx}.location-line image{width:31rpx;height:31rpx;margin-right:7rpx}.online-switch{display:flex;min-width:108rpx;min-height:88rpx;align-items:center;justify-content:center;margin-left:16rpx;transform:scale(1.08)}.online-helper{display:block;margin-top:26rpx;color:$dz-text-secondary;font-size:22rpx;line-height:1.5}.online-hero.offline{border-color:$dz-border;background:linear-gradient(135deg,#fff,#f3f7f7)}.offline .online-check{background:#a8b5b8;box-shadow:none}.offline .online-copy>.strong-text{color:$dz-text-primary}.pause-mark{display:flex;gap:10rpx}.pause-mark i{width:10rpx;height:36rpx;border-radius:5rpx;background:#fff}.location-warning{margin-top:18rpx;padding:13rpx 17rpx;border-radius:14rpx;color:#a2541e;background:#fff0e4;font-size:19rpx;line-height:1.4}
 .business-card{margin-top:24rpx;padding:28rpx 22rpx 24rpx;border:1rpx solid $dz-border;border-radius:30rpx;background:#fff;box-shadow:$dz-shadow}.business-card h2{margin:0 4rpx 25rpx;font-size:29rpx}.metrics-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}.metric{display:flex;min-width:0;align-items:center;justify-content:center;padding:4rpx 12rpx 17rpx;border-left:1rpx solid $dz-border;text-align:center;flex-direction:column}.metric:first-child{border-left:0}.metric text{color:$dz-text-secondary;font-size:19rpx;white-space:nowrap}.metric .strong-text{margin-top:12rpx;font-size:33rpx;line-height:1;white-space:nowrap}.metric.revenue .strong-text{color:$dz-brand;font-size:36rpx}.metric small{margin-left:5rpx;color:$dz-text-secondary;font-size:17rpx;font-weight:500}.chart-head{display:flex;align-items:center;justify-content:space-between;margin:12rpx 5rpx 0;padding-top:24rpx;border-top:1rpx dashed $dz-border}.chart-head .strong-text{font-size:24rpx}.chart-head text{color:$dz-text-tertiary;font-size:17rpx}.chart{position:relative;display:grid;height:260rpx;margin-top:14rpx;padding:22rpx 0 0;grid-template-columns:repeat(7,1fr)}.grid-lines{position:absolute;top:42rpx;right:4rpx;bottom:38rpx;left:4rpx;display:flex;justify-content:space-between;flex-direction:column}.grid-lines i{width:100%;border-top:1rpx dashed #e8eeee}.bar-column{position:relative;z-index:1;display:flex;min-width:0;align-items:center;justify-content:flex-end;flex-direction:column}.bar-value{height:27rpx;color:$dz-text-secondary;font-size:17rpx}.bar-track{display:flex;width:100%;height:160rpx;align-items:flex-end;justify-content:center}.bar{width:24rpx;min-height:8rpx;border-radius:12rpx 12rpx 2rpx 2rpx;background:linear-gradient(180deg,#11c1c4,#a7efec);box-shadow:0 6rpx 12rpx rgba(17,193,196,.13)}.bar-label{height:31rpx;margin-top:8rpx;color:$dz-text-secondary;font-size:18rpx}
 .next-order{position:relative;min-height:300rpx;margin-top:24rpx;padding:28rpx;border:2rpx solid rgba(17,193,196,.65);border-radius:30rpx;background:#fff;box-shadow:$dz-shadow-soft}.next-copy{position:relative;z-index:2;width:61%}.section-label{display:flex;align-items:center;color:$dz-brand;font-size:25rpx}.section-label image{width:38rpx;height:38rpx;margin-right:12rpx}.next-time{margin-top:24rpx;font-size:30rpx;font-weight:700;white-space:nowrap}.next-time .strong-text{margin-left:10rpx;color:$dz-orange}.next-order h2{margin:18rpx 0 0;font-size:33rpx}.order-meta{display:flex;gap:10rpx;margin-top:18rpx;color:$dz-text-secondary;font-size:20rpx;flex-direction:column}.order-meta text::before{display:inline-block;width:9rpx;height:9rpx;margin-right:9rpx;border:3rpx solid $dz-brand;border-radius:50%;content:''}.travel-art{position:absolute;z-index:1;top:30rpx;right:12rpx;width:43%;height:205rpx}.order-button{position:absolute;z-index:3;right:25rpx;bottom:22rpx;width:195rpx;height:70rpx;margin:0;border:0;border-radius:36rpx;color:#fff;background:linear-gradient(135deg,#18d0cd,#08afb8);font-size:23rpx;font-weight:650;line-height:70rpx;box-shadow:0 10rpx 22rpx rgba(8,169,177,.2)}.empty-next>h2{margin-top:28rpx;font-size:29rpx}.empty-next>text{display:block;margin-top:12rpx;color:$dz-text-secondary;font-size:20rpx;line-height:1.5}

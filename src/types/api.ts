@@ -15,6 +15,13 @@ export interface AuthSession {
   user: CurrentUser
 }
 
+export interface AccountSecurity {
+  phone_masked: string
+  password_set: boolean
+  account_status: 'active' | 'restricted' | 'suspended' | 'closed'
+  account_status_label: string
+}
+
 export interface ProviderTrendItem {
   date: string
   label: string

@@ -4,6 +4,7 @@
     { "path": "pages/auth/login", "style": { "navigationStyle": "custom" } },
     { "path": "pages/messages/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/profile/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/security/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/identity/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/provider-profile/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/services/index", "style": { "navigationStyle": "custom" } },

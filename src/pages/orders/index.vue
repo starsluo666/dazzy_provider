@@ -300,10 +300,11 @@ async function depart(order: ProviderManagedOrder) {
 async function uploadEvidence(order: ProviderManagedOrder) {
   if (busyOrderNo.value) return
   busyOrderNo.value = order.order_no
-  busyLabel.value = '定位中…'
+  busyLabel.value = '选择照片…'
   try {
-    const location = await getCurrentLocation()
     const selected = await chooseEvidencePhoto()
+    busyLabel.value = '定位中…'
+    const location = await getCurrentLocation()
     busyLabel.value = '上传中…'
     const uploaded = await uploadManagedOrderEvidence(selected.path, selected.file)
     updateOrder((await attachManagedOrderArrivalEvidence(order.order_no, {

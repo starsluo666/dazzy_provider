@@ -350,10 +350,11 @@ async function departOrder() {
 async function uploadEvidence() {
   if (busy.value) return
   busy.value = true
-  busyLabel.value = '定位中…'
+  busyLabel.value = '选择照片…'
   try {
-    const location = await getCurrentLocation()
     const selected = await chooseEvidencePhoto()
+    busyLabel.value = '定位中…'
+    const location = await getCurrentLocation()
     busyLabel.value = '上传中…'
     const uploaded = await uploadManagedOrderEvidence(selected.path, selected.file)
     order.value = (await attachManagedOrderArrivalEvidence(orderNo.value, { photo_id: uploaded.data.id, ...location })).data

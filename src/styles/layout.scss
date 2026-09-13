@@ -5,12 +5,54 @@
   min-height: 100vh;
   min-height: 100dvh;
   color: $dz-text-primary;
-  background: $dz-page;
+  background:
+    radial-gradient(circle at 8% -4%, rgba(17, 193, 196, 0.05), transparent 28%),
+    linear-gradient(180deg, #f7fbfb 0%, #eff5f6 100%);
 }
 
-.dz-page--tabbed { padding-bottom: calc(130rpx + env(safe-area-inset-bottom)); }
+.dz-page--tabbed { padding-bottom: calc(152rpx + env(safe-area-inset-bottom)); }
 .dz-safe-top { height: var(--status-bar-height); min-height: env(safe-area-inset-top); }
 .dz-container { box-sizing: border-box; width: 100%; margin: 0 auto; padding-right: 30rpx; padding-left: 30rpx; }
+
+/* tab 页吸顶头部：与用户端同构，小程序端近实体材质，H5 端玻璃模糊。 */
+.dz-sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  border-bottom: 1rpx solid transparent;
+  background: $dz-surface-glass-strong;
+}
+
+.dz-sticky-head::after {
+  position: absolute;
+  right: 0;
+  bottom: -16rpx;
+  left: 0;
+  height: 16rpx;
+  background: linear-gradient(180deg, rgba(31, 65, 72, 0.05), transparent);
+  content: '';
+  pointer-events: none;
+}
+
+/* #ifdef H5 */
+.dz-sticky-head {
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+/* #endif */
+
+/* 按压反馈工具类：可按压元素加 .dz-tappable 并配 hover-class="dz-pressed"。 */
+.dz-tappable {
+  transform-origin: center;
+  transition:
+    transform $dz-duration-fast $dz-ease-out,
+    opacity $dz-duration-fast ease;
+}
+
+.dz-pressed {
+  transform: scale(0.97);
+  opacity: 0.92;
+}
 
 .dz-page-head {
   display: flex;
@@ -34,7 +76,7 @@
 
 @media screen and (min-width: 480px) {
   .dz-container { max-width: 430px; padding-right: 16px; padding-left: 16px; }
-  .dz-page--tabbed { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .dz-page--tabbed { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 }
 
 @media screen and (min-width: 768px) {
@@ -42,7 +84,15 @@
 }
 
 @media screen and (orientation: landscape) and (max-height: 500px) {
-  .dz-page--tabbed { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .dz-page--tabbed { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .dz-sticky-head {
+    background: rgba(255, 255, 255, 0.98);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

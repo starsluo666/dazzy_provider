@@ -23,9 +23,9 @@
         <section v-if="!data.can_accept_orders" class="onboarding-card">
           <view class="onboarding-head"><view><text>接单准备</text><strong class="strong-text">还差 {{ data.onboarding_blockers.length }} 项</strong></view><text>{{ onboardingProgress }}</text></view>
           <view class="onboarding-steps">
-            <button :class="{done:data.identity_status==='verified'}" @tap="openIdentity"><i>{{data.identity_status==='verified'?'✓':'1'}}</i><view><strong>实名认证</strong><text>{{identityStepCopy}}</text></view><b>›</b></button>
-            <button :class="{done:data.is_profile_complete}" @tap="openProviderProfile"><i>{{data.is_profile_complete?'✓':'2'}}</i><view><strong>完善达人资料</strong><text>生活照、简介和服务城市</text></view><b>›</b></button>
-            <button :class="{done:!data.onboarding_blockers.some(item=>item.includes('服务'))}" @tap="openServices"><i>{{!data.onboarding_blockers.some(item=>item.includes('服务'))?'✓':'3'}}</i><view><strong>配置服务</strong><text>至少添加并启用一项服务</text></view><b>›</b></button>
+            <button class="dz-tappable" :class="{done:data.identity_status==='verified'}" hover-class="dz-pressed" @tap="openIdentity"><i>{{data.identity_status==='verified'?'✓':'1'}}</i><view><strong>实名认证</strong><text>{{identityStepCopy}}</text></view><b>›</b></button>
+            <button class="dz-tappable" :class="{done:data.is_profile_complete}" hover-class="dz-pressed" @tap="openProviderProfile"><i>{{data.is_profile_complete?'✓':'2'}}</i><view><strong>完善达人资料</strong><text>生活照、简介和服务城市</text></view><b>›</b></button>
+            <button class="dz-tappable" :class="{done:!data.onboarding_blockers.some(item=>item.includes('服务'))}" hover-class="dz-pressed" @tap="openServices"><i>{{!data.onboarding_blockers.some(item=>item.includes('服务'))?'✓':'3'}}</i><view><strong>配置服务</strong><text>至少添加并启用一项服务</text></view><b>›</b></button>
           </view>
         </section>
 
@@ -86,7 +86,7 @@
           </view>
         </section>
 
-        <section class="next-order" role="button" aria-label="查看下一单" @tap="openUpcomingOrder">
+        <section class="next-order dz-tappable" role="button" aria-label="查看下一单" hover-class="dz-pressed" @tap="openUpcomingOrder">
           <view v-if="data.upcoming_order" class="next-copy">
             <view class="section-label"><image src="/static/icons/calendar.svg" mode="aspectFit" /><strong class="strong-text">下一单</strong></view>
             <view class="next-time">{{ orderDateLabel(data.upcoming_order.starts_at) }} <strong class="strong-text">{{ timeRange(data.upcoming_order.starts_at, data.upcoming_order.ends_at) }}</strong></view>
@@ -102,7 +102,7 @@
           <button v-if="data.upcoming_order" class="order-button" @tap.stop="openUpcomingOrder">查看订单</button>
         </section>
 
-        <button class="alarm-card" :disabled="alarming" @tap="confirmAlarm">
+        <button class="alarm-card dz-tappable" :disabled="alarming" hover-class="dz-pressed" @tap="confirmAlarm">
           <image src="/static/icons/alarm.svg" mode="aspectFit" />
           <view><strong class="strong-text">一键报警</strong><text>危险时同步当前位置 · 点击后需二次确认</text></view>
           <b aria-hidden="true">›</b>

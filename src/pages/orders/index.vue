@@ -1,13 +1,15 @@
 <template>
   <view class="dz-page dz-page--tabbed provider-orders-page">
-    <view class="dz-safe-top" />
-    <header class="page-head dz-container">
-      <view class="head-spacer" aria-hidden="true" />
-      <strong class="strong-text">订单</strong>
-      <button class="refresh" aria-label="刷新订单" :disabled="loading" @tap="load">
-        <image src="/static/icons/refresh.svg" mode="aspectFit" aria-hidden="true" />
-      </button>
-    </header>
+    <view class="dz-sticky-head">
+      <view class="dz-safe-top" />
+      <header class="page-head dz-container">
+        <view class="head-spacer" aria-hidden="true" />
+        <strong class="strong-text">订单</strong>
+        <button class="refresh" aria-label="刷新订单" :disabled="loading" hover-class="dz-pressed" @tap="load">
+          <image src="/static/icons/refresh.svg" mode="aspectFit" aria-hidden="true" />
+        </button>
+      </header>
+    </view>
 
     <scroll-view scroll-x class="tabs" :show-scrollbar="false">
       <view class="tab-row">
@@ -16,6 +18,7 @@
           :key="tab.key"
           :aria-label="`${tab.label}${tab.count ? `，${tab.count}单` : ''}`"
           :class="{ active: activeTab === tab.key }"
+          hover-class="dz-pressed"
           @tap="activeTab = tab.key"
         >
           {{ tab.label }}<text v-if="tab.count">{{ tab.count }}</text>
@@ -39,7 +42,7 @@
         <text>新的订单和履约进度会出现在这里。</text>
       </section>
       <template v-else>
-        <section v-for="order in visibleOrders" :key="order.order_no" class="order-card" @tap="openDetail(order)">
+        <section v-for="order in visibleOrders" :key="order.order_no" class="order-card dz-tappable" hover-class="dz-pressed" @tap="openDetail(order)">
           <header>
             <view class="order-status"><i :class="statusTone(order.status)" />{{ statusLabel(order.status) }}</view>
             <view class="order-number">

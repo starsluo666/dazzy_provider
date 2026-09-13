@@ -25,3 +25,19 @@ $dz-surface-page: $dz-page;
 $dz-border-subtle: $dz-border;
 $dz-shadow-card: $dz-shadow;
 $dz-gradient-brand: linear-gradient(135deg, #28d4d0 0%, #11c1c4 55%, #08a9b1 100%);
+
+/* ============ Apple 质感扩展（与用户端 dazzy_app 对齐，小程序降级见 layout.scss） ============ */
+// 悬浮功能层材质：小程序无 backdrop-filter，用高不透明度实体色近似。
+$dz-surface-glass: rgba(250, 252, 252, 0.92);
+$dz-surface-glass-strong: rgba(251, 253, 253, 0.96);
+$dz-surface-highlight: rgba(255, 255, 255, 0.9);
+$dz-border-material: rgba(255, 255, 255, 0.85);
+$dz-shadow-floating: 0 4rpx 12rpx rgba(19, 34, 40, 0.075), 0 26rpx 72rpx rgba(31, 65, 72, 0.17);
+
+/* 动效：只允许 transform / opacity；入场 ease-out，高频操作不做动画。 */
+$dz-duration-fast: 140ms;
+$dz-duration-base: 200ms;
+$dz-duration-slow: 260ms;
+$dz-duration-sheet: 380ms;
+$dz-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+$dz-ease-drawer: cubic-bezier(0.22, 1, 0.36, 1);

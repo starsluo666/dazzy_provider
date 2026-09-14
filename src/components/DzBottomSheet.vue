@@ -2,12 +2,12 @@
   <view class="dz-sheet" :class="{ 'dz-sheet--visible': visible, 'dz-sheet--dragging': dragging }">
     <view
       class="dz-sheet__mask"
-      :style="dragging ? { opacity: maskProgress, transition: 'none' } : undefined"
+      :style="maskStyle"
       @tap="$emit('close')"
     />
     <view
       class="dz-sheet__panel"
-      :style="dragging ? { transform: `translateY(${dragOffset}px)`, transition: 'none' } : undefined"
+      :style="panelStyle"
     >
       <view class="dz-sheet__dragzone" @touchstart="onTouchStart" @touchmove.prevent="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchEnd">
         <view class="dz-sheet__grabber" />
@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = withDefaults(defineProps<{ visible: boolean; title?: string; subtitle?: string; closable?: boolean }>(), {
   title: '',
@@ -47,6 +47,12 @@ const emit = defineEmits<{ close: [] }>()
 const dragging = ref(false)
 const dragOffset = ref(0)
 const maskProgress = ref(1)
+const maskStyle = computed(() => dragging.value
+  ? `opacity:${maskProgress.value};transition:none;`
+  : '')
+const panelStyle = computed(() => dragging.value
+  ? `transform:translateY(${dragOffset.value}px);transition:none;`
+  : '')
 
 let startY = 0
 let panelHeight = 0
@@ -61,7 +67,7 @@ function onTouchStart(e: TouchEvent) {
   const touch = e.touches[0]
   startY = touch.clientY
   history = [{ y: touch.clientY, t: Date.now() }]
-  panelHeight = Math.max(1, uni.getSystemInfoSync().windowHeight || 667)
+  panelHeight = Math.max(1, uni.getWindowInfo().windowHeight || 667)
   dragging.value = true
   dragOffset.value = 0
 }

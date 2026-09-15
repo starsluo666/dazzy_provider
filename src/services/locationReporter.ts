@@ -6,7 +6,7 @@ type LocationResult = {
   latitude: number
   accuracy?: number
   horizontalAccuracy?: number
-  speed?: number
+  speed?: number | null
 }
 
 type WeixinLocationApi = {
@@ -31,12 +31,17 @@ let errorCallback: ((message: string) => void) | undefined
 let reportedCallback: ((location: ProviderLocationPayload) => void) | undefined
 
 function toPayload(result: LocationResult): ProviderLocationPayload {
+  // 微信在无法获取速度时会返回 -1；后端约定未知速度应省略，而不是上传负值。
+  const speed = typeof result.speed === 'number' && Number.isFinite(result.speed)
+    && result.speed >= 0 && result.speed <= 100
+    ? result.speed
+    : undefined
   return {
     longitude: result.longitude,
     latitude: result.latitude,
     accuracy_m: Number(result.accuracy || result.horizontalAccuracy || 0),
     located_at: new Date().toISOString(),
-    ...(typeof result.speed === 'number' ? { speed_mps: result.speed } : {}),
+    ...(speed === undefined ? {} : { speed_mps: speed }),
   }
 }
 
@@ -51,7 +56,7 @@ export function getCurrentProviderLocation(): Promise<ProviderLocationPayload> {
         longitude: position.coords.longitude,
         latitude: position.coords.latitude,
         accuracy: position.coords.accuracy,
-        speed: position.coords.speed || undefined,
+        speed: position.coords.speed,
       })),
       error => reject(new Error(error.message || '无法获取当前位置')),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 },

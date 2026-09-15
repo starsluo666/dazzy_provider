@@ -1,14 +1,17 @@
 {
   "name": "DAZZY达人端",
-  "appid": "",
+  "appid": "wx7331b97b90eb8db7",
   "description": "DAZZY 达人接单与服务工作台",
   "versionName": "0.1.0",
   "versionCode": "10",
   "transformPx": false,
   "h5": {},
   "mp-weixin": {
-    "appid": "",
-    "setting": { "urlCheck": false },
+    "appid": "wx7331b97b90eb8db7",
+    "setting": {
+      "urlCheck": false,
+      "compileHotReLoad": false
+    },
     "usingComponents": true,
     "requiredBackgroundModes": ["location"],
     "requiredPrivateInfos": ["getLocation", "startLocationUpdate", "onLocationChange"],

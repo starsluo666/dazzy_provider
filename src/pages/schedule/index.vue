@@ -46,7 +46,9 @@
       </section>
     </main>
 
-    <footer><button class="dz-tappable" hover-class="dz-pressed" :disabled="!canManageDay" @tap="openSheet">添加时间段</button></footer>
+    <view class="schedule-footer">
+      <button class="schedule-add-button dz-tappable" hover-class="dz-pressed" :disabled="!canManageDay" @tap="openSheet">添加时间段</button>
+    </view>
 
     <DzBottomSheet :visible="sheet" title="添加可预约时间" subtitle="设置用户可以预约你的时间" @close="sheet = false">
       <view class="sheet-fields">
@@ -262,4 +264,43 @@ footer{padding:18rpx 30rpx calc(18rpx + env(safe-area-inset-bottom));background:
 /* 弹层由 DzBottomSheet 承载（拖拽收起/进出场动画），这里只保留表单字段规格。 */
 .sheet-fields{display:block}
 .date-row{margin-top:6rpx;font-size:24rpx}.date-row image{width:38rpx;height:38rpx;margin-right:12rpx}.time-row{grid-template-columns:1fr 42rpx 1fr;margin-top:20rpx}.time-row picker view{min-height:112rpx;justify-content:center;gap:10rpx;padding:18rpx;border-radius:22rpx}.time-row text{font-size:21rpx}.time-row .strong-text{font-size:36rpx;font-variant-numeric:tabular-nums}.time-row b{font-size:26rpx}.switch-row{min-height:102rpx;margin-top:20rpx;padding:18rpx 0}.switch-row>view{gap:8rpx}.switch-row .strong-text,.copy>.strong-text{font-size:25rpx}.switch-row text{font-size:21rpx}.copy{padding:22rpx 0}.copy>view{display:grid;gap:10rpx;margin-top:16rpx;grid-template-columns:repeat(3,1fr)}.copy button{width:100%;height:66rpx;padding:0;border-radius:19rpx;font-size:22rpx;line-height:66rpx}.notice{padding:17rpx 18rpx;border-radius:18rpx;font-size:21rpx;line-height:1.55}.notice>i{margin-top:9rpx}.confirm{margin-top:20rpx}.confirm-disabled{box-shadow:none;opacity:.45}
+
+/* 使用纯 class 选择器，避免 footer 在小程序端被编译为 view 后丢失底栏样式。 */
+.schedule-footer{
+  position:fixed;
+  z-index:20;
+  right:0;
+  bottom:0;
+  left:0;
+  box-sizing:border-box;
+  width:100%;
+  max-width:750px;
+  margin:0 auto;
+  padding:18rpx 30rpx calc(18rpx + env(safe-area-inset-bottom));
+  background:rgba(250,253,253,.96);
+  box-shadow:0 -12rpx 38rpx rgba(24,55,58,.09);
+}
+.schedule-add-button{
+  display:flex;
+  width:100%;
+  height:88rpx;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:24rpx;
+  color:#fff;
+  background:$dz-brand;
+  box-shadow:$dz-shadow-control;
+  font-size:27rpx;
+  font-weight:700;
+  line-height:1;
+}
+.schedule-add-button::after{display:none}
+.schedule-add-button[disabled]{box-shadow:none;opacity:.42}
+/* #ifdef H5 */
+.schedule-footer{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+/* #endif */
 </style>

@@ -1,9 +1,9 @@
 <template>
-  <view class="dz-page security-page">
+  <view class="dz-page dz-management-page security-page">
     <view class="security-hero">
       <view class="dz-safe-top" />
-      <header class="dz-page-head dz-container">
-        <button aria-label="返回" @tap="goBack">‹</button>
+      <header class="dz-page-head dz-management-head dz-container">
+        <button class="dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="goBack">‹</button>
         <strong class="strong-text">账号与安全</strong>
         <view class="head-space" />
       </header>
@@ -33,7 +33,7 @@
             <view class="row-copy"><strong class="strong-text">登录手机号</strong><text>用于登录和身份核验</text></view>
             <view class="row-value"><strong>{{ security?.phone_masked }}</strong><text>已绑定</text></view>
           </view>
-          <button class="setting-row" aria-label="查看实名认证" @tap="openIdentity">
+          <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="查看实名认证" @tap="openIdentity">
             <view class="row-icon"><image src="/static/icons/check.svg" mode="aspectFit" /></view>
             <view class="row-copy"><strong class="strong-text">实名认证</strong><text>接单前必须完成达人实名认证</text></view>
             <view class="row-value"><strong>{{ workbench?.identity_status_label || '未认证' }}</strong><b>›</b></view>
@@ -42,12 +42,12 @@
 
         <h2 class="section-title">安全设置</h2>
         <section class="setting-card">
-          <button class="setting-row" aria-label="修改登录密码" @tap="openPanel('password')">
+          <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="修改登录密码" @tap="openPanel('password')">
             <view class="row-icon"><image src="/static/icons/password.svg" mode="aspectFit" /></view>
             <view class="row-copy"><strong class="strong-text">登录密码</strong><text>定期更换密码可降低账号风险</text></view>
             <view class="row-value"><strong>修改</strong><b>›</b></view>
           </button>
-          <button class="setting-row" aria-label="退出其他设备" @tap="openPanel('sessions')">
+          <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="退出其他设备" @tap="openPanel('sessions')">
             <view class="row-icon"><image src="/static/icons/devices.svg" mode="aspectFit" /></view>
             <view class="row-copy"><strong class="strong-text">其他设备登录</strong><text>发现异常时让其他设备立即退出</text></view>
             <view class="row-value"><strong class="danger-copy">退出</strong><b>›</b></view>
@@ -207,4 +207,15 @@ onShow(() => { if (guardCurrentPage()) load() })
   .section-title{margin:24px 3px 12px;font-size:18px}.setting-card{border-radius:18px}.setting-row{min-height:74px;padding:12px 16px}.row-icon{width:42px;height:42px;border-radius:12px}.row-icon image{width:25px;height:25px}.row-copy{gap:4px;margin-left:12px}.row-copy strong{font-size:15px}.row-copy text{font-size:12px}.row-value{gap:5px;margin-left:8px}.row-value strong{font-size:13px}.row-value text{font-size:11px}.row-value b{font-size:23px}.security-tip{gap:8px;margin-top:18px;padding:16px;border-radius:16px}.security-tip strong{font-size:14px}.security-tip text{font-size:13px}
   .security-sheet{left:50%;max-width:430px;padding:9px 20px calc(22px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;transform:translateX(-50%)}.sheet-handle{width:48px;height:5px;margin-bottom:9px}.security-sheet header{padding:7px 0 15px}.security-sheet header>view{gap:5px}.security-sheet header strong{font-size:20px}.security-sheet header text{font-size:13px}.security-sheet header button{width:48px;height:48px;font-size:25px;line-height:48px}.sheet-form{gap:15px}.sheet-form label{gap:7px}.sheet-form label>text{font-size:14px}.password-field{height:58px;padding:0 7px 0 16px;border-radius:14px}.password-field input{font-size:15px}.password-field button{min-width:56px;height:48px;padding:0 8px;font-size:13px;line-height:48px}.session-note{gap:5px;padding:15px;border-radius:13px}.session-note strong{font-size:14px}.session-note text{font-size:13px}.submit-button{height:58px;border-radius:15px;font-size:17px;line-height:58px}
 }
+
+/* 管理页统一规格：安全信息先给结论，再给可操作设置。 */
+.security-page{background:linear-gradient(180deg,#edfafa 0,#f5f9f9 350rpx,#f2f6f6 100%)}
+.security-hero{background:rgba(247,252,252,.94)}.security-page .dz-page-head{height:100rpx}.security-page .dz-page-head button,.head-space{width:88rpx;height:80rpx;flex:0 0 88rpx}.security-page .dz-page-head button{font-size:54rpx;line-height:76rpx}.security-page .dz-page-head .strong-text{font-size:34rpx}.security-content{padding-top:20rpx;padding-bottom:calc(58rpx + env(safe-area-inset-bottom))}
+.security-page button::after{display:none}
+.security-summary{grid-template-columns:88rpx 1fr;gap:22rpx;padding:28rpx;border:1rpx solid rgba(255,255,255,.95);border-radius:30rpx;background:rgba(255,255,255,.94);box-shadow:$dz-shadow}.summary-icon{width:88rpx;height:88rpx;border-radius:26rpx}.summary-icon image{width:52rpx;height:52rpx}.summary-copy>view{gap:13rpx}.summary-copy strong{font-size:31rpx}.summary-copy>view text{padding:6rpx 13rpx;border-radius:16rpx;font-size:19rpx}.summary-copy p{margin-top:10rpx;font-size:23rpx;line-height:1.55}.summary-status{margin-top:6rpx;padding-top:24rpx}.summary-status view{gap:9rpx}.summary-status text{font-size:20rpx}.summary-status strong{font-size:25rpx;font-variant-numeric:tabular-nums}
+.section-title{margin:34rpx 4rpx 15rpx;font-size:28rpx}.setting-card{border-color:rgba(220,232,233,.9);border-radius:28rpx;background:rgba(255,255,255,.96);box-shadow:$dz-shadow-soft}.setting-row{min-height:126rpx;padding:21rpx 24rpx;background:transparent}.row-icon{width:70rpx;height:70rpx;border-radius:21rpx}.row-icon image{width:42rpx;height:42rpx}.row-copy{gap:8rpx;margin-left:20rpx}.row-copy strong{font-size:26rpx}.row-copy text{font-size:21rpx;line-height:1.45}.row-value{align-items:center;gap:10rpx;margin-left:14rpx;flex-direction:row}.row-value strong{font-size:22rpx;white-space:nowrap}.row-value text{padding:4rpx 9rpx;border-radius:12rpx;background:#eaf8f1;font-size:18rpx;white-space:nowrap}.row-value b{font-size:36rpx}.security-tip{gap:10rpx;margin-top:24rpx;padding:24rpx 26rpx;border:1rpx solid #eee5c9;border-radius:24rpx;background:rgba(255,250,234,.88)}.security-tip strong{font-size:24rpx}.security-tip text{font-size:22rpx;line-height:1.65}
+.security-sheet{padding:14rpx 30rpx calc(34rpx + env(safe-area-inset-bottom));border-radius:40rpx 40rpx 0 0;background:rgba(253,254,254,.98);box-shadow:$dz-shadow-sheet}.sheet-handle{width:76rpx;height:8rpx;margin-bottom:18rpx}.security-sheet header{padding:10rpx 0 24rpx}.security-sheet header strong{font-size:33rpx}.security-sheet header text{font-size:22rpx;line-height:1.5}.security-sheet header button{width:72rpx;height:72rpx;font-size:38rpx;line-height:72rpx}.sheet-form{gap:24rpx}.sheet-form label{gap:11rpx}.sheet-form label>text{font-size:24rpx}.password-field{height:96rpx;padding:0 10rpx 0 24rpx;border-radius:22rpx}.password-field input{font-size:25rpx}.password-field button{min-width:92rpx;height:72rpx;font-size:22rpx;line-height:72rpx}.session-note{gap:9rpx;padding:24rpx;border-radius:22rpx}.session-note strong{font-size:25rpx}.session-note text{font-size:22rpx;line-height:1.6}.submit-button{height:92rpx;border-radius:24rpx;font-size:27rpx;line-height:92rpx}
+/* #ifdef H5 */
+.security-hero,.security-sheet{-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px)}
+/* #endif */
 </style>

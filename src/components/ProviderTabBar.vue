@@ -12,9 +12,9 @@
       @tap="open(tab.path)"
     >
       <view class="icon-shell">
-        <image :src="tab.key === active ? tab.activeIcon : tab.icon" mode="aspectFit" aria-hidden="true" />
+        <image class="tab-icon" :src="tab.key === active ? tab.activeIcon : tab.icon" mode="aspectFit" aria-hidden="true" />
       </view>
-      <text>{{ tab.label }}</text>
+      <text class="tab-label">{{ tab.label }}</text>
     </view>
   </nav>
 </template>
@@ -88,7 +88,8 @@ function open(path: string) {
   color: $dz-text-secondary;
   font-size: 20rpx;
   flex-direction: column;
-  transition: color .18s ease-out;
+  transform-origin: center bottom;
+  transition: color $dz-duration-fast ease-out, transform $dz-duration-fast $dz-ease-out, opacity $dz-duration-fast ease-out;
 }
 
 .icon-shell {
@@ -102,11 +103,13 @@ function open(path: string) {
   transition: background-color .18s ease-out, opacity .12s ease-out;
 }
 
-.icon-shell image { width: 45rpx; height: 45rpx; }
+.tab-icon { width: 45rpx; height: 45rpx; }
 .tab.active { color: $dz-brand-deep; font-weight: 650; }
 .tab.active .icon-shell { background: $dz-brand-soft; }
-.tab--pressed .icon-shell { opacity: .68; background: $dz-brand-soft; }
+.tab--pressed { transform: scale(0.96); opacity: .76; }
+.tab--pressed .icon-shell { background: $dz-brand-soft; }
 
+/* #ifdef H5 */
 @media (prefers-reduced-transparency: reduce) {
   .tabbar {
     background: rgba(255, 255, 255, 0.98);
@@ -114,6 +117,11 @@ function open(path: string) {
     backdrop-filter: none;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .tab, .icon-shell { transition-duration: .01ms; }
+}
+/* #endif */
 
 @media screen and (min-width:480px){
   .tabbar{
@@ -124,12 +132,12 @@ function open(path: string) {
   }
   .tab{min-height:64px;font-size:13px}
   .icon-shell{width:64px;height:34px;margin-bottom:1px;border-radius:18px}
-  .icon-shell image{width:28px;height:28px}
+  .tab-icon{width:28px;height:28px}
 }
 @media screen and (orientation:landscape) and (max-height:500px){
   .tabbar{height:64px;bottom:8px;padding-bottom:0}
   .tab{min-height:56px;font-size:12px}
   .icon-shell{width:60px;height:32px;margin-bottom:0;border-radius:18px}
-  .icon-shell image{width:26px;height:26px}
+  .tab-icon{width:26px;height:26px}
 }
 </style>

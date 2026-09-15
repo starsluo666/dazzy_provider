@@ -1,10 +1,10 @@
 <template>
-  <view class="dz-page dz-page--tabbed provider-orders-page">
+  <view class="dz-page dz-page--tabbed dz-management-page provider-orders-page">
     <view class="dz-sticky-head">
       <view class="dz-safe-top" />
       <header class="page-head dz-container">
         <view class="head-spacer" aria-hidden="true" />
-        <strong class="strong-text">订单</strong>
+        <strong class="strong-text">达人订单</strong>
         <button class="refresh" aria-label="刷新订单" :disabled="loading" hover-class="dz-pressed" @tap="load">
           <image src="/static/icons/refresh.svg" mode="aspectFit" aria-hidden="true" />
         </button>
@@ -18,6 +18,7 @@
           :key="tab.key"
           :aria-label="`${tab.label}${tab.count ? `，${tab.count}单` : ''}`"
           :class="{ active: activeTab === tab.key }"
+          class="dz-tappable"
           hover-class="dz-pressed"
           @tap="activeTab = tab.key"
         >
@@ -27,6 +28,13 @@
     </scroll-view>
 
     <main class="dz-container order-content">
+      <view v-if="!loading && !error" class="list-context">
+        <view>
+          <text>当前视图</text>
+          <strong class="strong-text">{{ activeLabel }}</strong>
+        </view>
+        <text>{{ visibleOrders.length }} 笔订单</text>
+      </view>
       <NetworkState v-if="loading" message="正在加载达人订单…" />
       <NetworkState
         v-else-if="error"
@@ -44,7 +52,7 @@
       <template v-else>
         <section v-for="order in visibleOrders" :key="order.order_no" class="order-card dz-tappable" hover-class="dz-pressed" @tap="openDetail(order)">
           <header>
-            <view class="order-status"><i :class="statusTone(order.status)" />{{ statusLabel(order.status) }}</view>
+            <view class="order-status" :class="statusTone(order.status)"><i :class="statusTone(order.status)" />{{ statusLabel(order.status) }}</view>
             <view class="order-number">
               <text>{{ order.order_no }}</text>
               <button aria-label="查看订单详情" @tap.stop="openDetail(order)">详情 ›</button>
@@ -55,9 +63,9 @@
             <view class="customer-avatar">{{ (order.customer_name || '用户').slice(0, 1) }}</view>
             <view class="order-copy">
               <strong class="strong-text">{{ order.customer_name || '预约用户' }} · {{ order.service_name }}</strong>
-              <text>◷ {{ timeRange(order.starts_at, order.ends_at) }}</text>
-              <text>● {{ addressLabel(order) }}</text>
-              <text>☎ {{ order.contact_name }}{{ order.contact_gender_label }} {{ order.contact_phone_display }}</text>
+              <view class="meta-line"><image src="/static/icons/calendar.svg" mode="aspectFit" /><text>{{ timeRange(order.starts_at, order.ends_at) }}</text></view>
+              <view class="meta-line"><image src="/static/icons/location.svg" mode="aspectFit" /><text>{{ addressLabel(order) }}</text></view>
+              <view class="meta-line"><image src="/static/icons/phone.svg" mode="aspectFit" /><text>{{ order.contact_name }}{{ order.contact_gender_label }} {{ order.contact_phone_display }}</text></view>
             </view>
             <view class="amount">
               <small>订单金额</small>
@@ -89,6 +97,7 @@
               v-if="actionLabel(order)"
               :class="{ outline: order.status === 'departed' && !order.arrival_photo_url }"
               :disabled="isActionDisabled(order)"
+              hover-class="dz-pressed"
               @tap.stop="performAction(order)"
             >
               {{ busyOrderNo === order.order_no ? busyLabel : actionLabel(order) }}
@@ -175,7 +184,7 @@ function statusLabel(status: string) {
   }[status] || '处理中'
 }
 function statusTone(status: string) {
-  if (status === 'pending_acceptance') return 'orange'
+  if (['pending_acceptance', 'pending_support', 'after_sales'].includes(status)) return 'orange'
   if (['completed', 'pending_review'].includes(status)) return 'green'
   if (['cancelled', 'refunded'].includes(status)) return 'gray'
   return 'cyan'
@@ -361,5 +370,71 @@ onShow(() => { if (guardCurrentPage()) load() })
 
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
-.provider-orders-page{min-height:100vh;background:$dz-surface-page}.page-head{position:sticky;z-index:10;top:0;display:flex;align-items:center;justify-content:space-between;height:92rpx;background:#fff}.head-spacer,.page-head>button{width:88rpx;height:88rpx;flex:0 0 88rpx}.page-head>button{display:flex;align-items:center;justify-content:center;margin:0;padding:0;border:0;background:transparent}.page-head button::after,.tabs button::after,.order-card button::after{display:none}.page-head .strong-text{font-size:31rpx}.page-head .refresh image{width:38rpx;height:38rpx}.tabs{position:sticky;z-index:9;top:calc(92rpx + env(safe-area-inset-top));height:88rpx;border-top:1rpx solid $dz-border-subtle;background:#fff;white-space:nowrap}.tab-row{display:flex;min-width:860rpx;height:88rpx}.tab-row button{position:relative;min-width:140rpx;height:88rpx;margin:0;padding:0;border:0;background:#fff;color:$dz-text-secondary;font-size:21rpx;line-height:88rpx}.tab-row button.active{color:$dz-text-primary;font-weight:750}.tab-row button.active::after{position:absolute;right:42rpx;bottom:0;left:42rpx;height:6rpx;border-radius:3rpx;background:$dz-brand-primary;content:''}.tab-row text{display:inline-block;min-width:28rpx;margin-left:5rpx;border-radius:14rpx;color:#fff;background:#ff6d32;font-size:16rpx;line-height:28rpx}.order-content{padding-top:20rpx;padding-bottom:50rpx}.empty-state{display:flex;min-height:600rpx;flex-direction:column;align-items:center;justify-content:center;color:$dz-text-secondary;text-align:center}.empty-icon{display:flex;align-items:center;justify-content:center;width:108rpx;height:108rpx;border-radius:34rpx;background:$dz-brand-soft}.empty-icon image{width:60rpx;height:60rpx}.empty-state .strong-text{margin-top:24rpx;color:$dz-text-primary;font-size:28rpx}.empty-state text{margin-top:10rpx;font-size:20rpx}.order-card{margin-bottom:18rpx;padding:0 22rpx;border-radius:24rpx;background:#fff;box-shadow:$dz-shadow-card}.order-card>header{display:flex;align-items:center;justify-content:space-between;height:72rpx;border-bottom:1rpx solid $dz-border-subtle}.order-status{display:flex;align-items:center;font-size:22rpx;font-weight:750}.order-card>header i{width:14rpx;height:14rpx;margin-right:9rpx;border-radius:50%}.order-card>header i.orange{background:#ff7438}.order-card>header i.cyan{background:$dz-brand-primary}.order-card>header i.green{background:#4fbd70}.order-card>header i.gray{background:$dz-text-tertiary}.order-number{display:flex;align-items:center;gap:10rpx}.order-number>text{color:$dz-text-tertiary;font-size:16rpx}.order-number>button{height:46rpx;margin:0;padding:0 8rpx;border:0;color:$dz-brand-deep;background:transparent;font-size:18rpx;line-height:46rpx}.order-main{display:flex;align-items:flex-start;padding:22rpx 0}.customer-avatar{display:flex;align-items:center;justify-content:center;width:88rpx;height:88rpx;flex:none;border-radius:20rpx;color:$dz-brand-deep;background:$dz-brand-soft;font-size:31rpx}.order-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:8rpx;margin-left:16rpx}.order-copy .strong-text{font-size:23rpx}.order-copy text{overflow:hidden;color:$dz-text-secondary;font-size:18rpx;text-overflow:ellipsis;white-space:nowrap}.amount{display:flex;flex-direction:column;align-items:flex-end;gap:8rpx;margin-left:10rpx}.amount small{color:$dz-text-tertiary;font-size:16rpx}.amount .strong-text{color:$dz-price-primary;font-size:28rpx}.note{margin-bottom:18rpx;padding:13rpx 16rpx;border-radius:12rpx;color:$dz-text-secondary;background:#f7f9fa;font-size:18rpx}.evidence{display:flex;align-items:center;width:100%;min-height:90rpx;margin:0 0 16rpx;padding:12rpx;border:0;border-radius:16rpx;background:#f1fbfa;text-align:left}.evidence image{width:70rpx;height:70rpx;flex:none;border-radius:12rpx}.evidence view{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx;margin-left:14rpx}.evidence .strong-text{font-size:20rpx}.evidence text{color:$dz-text-secondary;font-size:17rpx}.evidence b{color:$dz-brand-deep;font-size:18rpx;font-weight:650}.order-card>footer{display:flex;align-items:center;justify-content:space-between;min-height:120rpx;border-top:1rpx solid $dz-border-subtle}.progress-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx;padding:12rpx 10rpx 12rpx 0}.progress-copy .strong-text{font-size:19rpx}.progress-copy text{color:$dz-text-secondary;font-size:17rpx}.progress-copy text.expired{color:#e7653d}.order-card>footer button{min-width:176rpx;height:88rpx;margin:0;padding:0 24rpx;border:0;border-radius:44rpx;color:#fff;background:$dz-gradient-brand;font-size:20rpx;line-height:88rpx}.order-card>footer button:active{opacity:.78;transform:scale(.98)}.order-card>footer button[disabled]{opacity:.45}.order-card>footer button.outline{border:1rpx solid $dz-brand-primary;color:$dz-brand-deep;background:#fff}
+.provider-orders-page{min-height:100vh;background:linear-gradient(180deg,#f7fbfb 0,#f1f6f6 100%)}.page-head{position:sticky;z-index:10;top:0;display:flex;align-items:center;justify-content:space-between;height:92rpx;background:$dz-surface-glass-strong}.head-spacer,.page-head>button{width:88rpx;height:88rpx;flex:0 0 88rpx}.page-head>button{display:flex;align-items:center;justify-content:center;margin:0;padding:0;border:0;background:transparent}.page-head button::after,.tabs button::after,.order-card button::after{display:none}.page-head .strong-text{font-size:31rpx;letter-spacing:-.015em}.page-head .refresh image{width:38rpx;height:38rpx}.tabs{position:sticky;z-index:9;top:calc(92rpx + env(safe-area-inset-top));height:84rpx;background:$dz-surface-glass-strong;white-space:nowrap}.tab-row{display:flex;min-width:846rpx;height:84rpx;align-items:center;gap:8rpx;padding:8rpx 24rpx 12rpx}.tab-row button{min-width:126rpx;height:58rpx;margin:0;padding:0 14rpx;border:0;border-radius:29rpx;color:$dz-text-secondary;background:transparent;font-size:20rpx;line-height:58rpx}.tab-row button.active{color:$dz-brand-deep;background:$dz-brand-soft;font-weight:750}.tab-row text{display:inline-block;min-width:28rpx;margin-left:6rpx;border-radius:14rpx;color:#fff;background:$dz-orange;font-size:16rpx;line-height:28rpx}.order-content{padding-top:22rpx;padding-bottom:50rpx}.empty-state{display:flex;min-height:600rpx;flex-direction:column;align-items:center;justify-content:center;color:$dz-text-secondary;text-align:center}.empty-icon{display:flex;align-items:center;justify-content:center;width:108rpx;height:108rpx;border-radius:30rpx;background:$dz-brand-soft}.empty-icon image{width:60rpx;height:60rpx}.empty-state .strong-text{margin-top:24rpx;color:$dz-text-primary;font-size:28rpx}.empty-state text{margin-top:10rpx;font-size:20rpx}.order-card{overflow:hidden;margin-bottom:20rpx;padding:0 22rpx;border:1rpx solid rgba(218,229,230,.92);border-radius:26rpx;background:rgba(255,255,255,.97);box-shadow:$dz-shadow-soft}.order-card>header{display:flex;align-items:center;justify-content:space-between;height:74rpx;border-bottom:1rpx solid $dz-border-subtle}.order-status{display:flex;align-items:center;font-size:22rpx;font-weight:750}.order-card>header i{width:14rpx;height:14rpx;margin-right:9rpx;border-radius:50%}.order-card>header i.orange{background:#ff7438}.order-card>header i.cyan{background:$dz-brand-primary}.order-card>header i.green{background:#4fbd70}.order-card>header i.gray{background:$dz-text-tertiary}.order-number{display:flex;align-items:center;gap:10rpx}.order-number>text{color:$dz-text-tertiary;font-size:16rpx}.order-number>button{height:46rpx;margin:0;padding:0 8rpx;border:0;color:$dz-brand-deep;background:transparent;font-size:18rpx;line-height:46rpx}.order-main{display:flex;align-items:flex-start;padding:24rpx 0 22rpx}.customer-avatar{display:flex;width:84rpx;height:96rpx;flex:none;align-items:center;justify-content:center;border-radius:19rpx;color:$dz-brand-deep;background:$dz-brand-soft;font-size:31rpx;font-weight:700}.order-copy{display:flex;min-width:0;gap:8rpx;margin-left:16rpx;flex:1;flex-direction:column}.order-copy .strong-text{font-size:23rpx;letter-spacing:-.01em}.meta-line{display:flex;min-width:0;align-items:center}.meta-line image{width:24rpx;height:24rpx;flex:none;margin-right:7rpx;opacity:.82}.meta-line text{overflow:hidden;color:$dz-text-secondary;font-size:18rpx;text-overflow:ellipsis;white-space:nowrap}.amount{display:flex;align-items:flex-end;gap:8rpx;margin-left:10rpx;flex-direction:column}.amount small{color:$dz-text-tertiary;font-size:16rpx}.amount .strong-text{color:$dz-price-primary;font-size:28rpx;letter-spacing:-.02em}.note{margin-bottom:18rpx;padding:13rpx 16rpx;border-radius:12rpx;color:$dz-text-secondary;background:#f7f9fa;font-size:18rpx}.evidence{display:flex;align-items:center;width:100%;min-height:90rpx;margin:0 0 16rpx;padding:12rpx;border:0;border-radius:16rpx;background:#f1fbfa;text-align:left}.evidence image{width:70rpx;height:70rpx;flex:none;border-radius:12rpx}.evidence view{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx;margin-left:14rpx}.evidence .strong-text{font-size:20rpx}.evidence text{color:$dz-text-secondary;font-size:17rpx}.evidence b{color:$dz-brand-deep;font-size:18rpx;font-weight:650}.order-card>footer{display:flex;align-items:center;justify-content:space-between;min-height:116rpx;border-top:1rpx solid $dz-border-subtle}.progress-copy{display:flex;min-width:0;gap:5rpx;padding:12rpx 10rpx 12rpx 0;flex:1;flex-direction:column}.progress-copy .strong-text{font-size:19rpx}.progress-copy text{color:$dz-text-secondary;font-size:17rpx}.progress-copy text.expired{color:#e7653d}.order-card>footer button{min-width:176rpx;height:76rpx;margin:0;padding:0 24rpx;border:0;border-radius:$dz-radius-control;color:#fff;background:$dz-brand;box-shadow:$dz-shadow-control;font-size:20rpx;line-height:76rpx;transition:transform $dz-duration-fast $dz-ease-out,opacity $dz-duration-fast ease}.order-card>footer button:active{opacity:.78;transform:scale(.97)}.order-card>footer button[disabled]{opacity:.45;box-shadow:none}.order-card>footer button.outline{border:1rpx solid $dz-brand-primary;color:$dz-brand-deep;background:#fff;box-shadow:none}
+
+.provider-orders-page { background: radial-gradient(circle at 90% 0, rgba(81,220,216,.15) 0, rgba(81,220,216,0) 330rpx), linear-gradient(180deg,#f6fbfb 0,#f1f6f6 100%); }
+.page-head { border-bottom: 1rpx solid rgba(214,230,231,.55); }
+.tabs { border-bottom: 1rpx solid rgba(210,226,227,.72); box-shadow: 0 9rpx 24rpx rgba(29,70,74,.04); }
+.tab-row { gap: 10rpx; }
+.tab-row button { border: 1rpx solid transparent; transition: color $dz-duration-fast ease, background $dz-duration-fast ease, transform $dz-duration-fast $dz-ease-out; }
+.tab-row button.active { border-color: rgba(17,193,196,.14); background: rgba(255,255,255,.92); box-shadow: 0 6rpx 18rpx rgba(25,75,79,.07); }
+.list-context { display: flex; align-items: flex-end; justify-content: space-between; margin: 2rpx 4rpx 18rpx; }
+.list-context>view { display: flex; gap: 4rpx; flex-direction: column; }
+.list-context view>text { color: $dz-text-tertiary; font-size: 16rpx; }
+.list-context .strong-text { font-size: 27rpx; letter-spacing: -.015em; }
+.list-context>text { padding: 8rpx 13rpx; border: 1rpx solid rgba(17,193,196,.1); border-radius: 999rpx; color: $dz-brand-deep; background: rgba(230,249,248,.72); font-size: 17rpx; }
+.order-card { margin-bottom: 22rpx; border-color: rgba(214,226,227,.9); border-radius: 31rpx; background: #fff; box-shadow: 0 2rpx 2rpx rgba(23,57,61,.025), 0 16rpx 42rpx rgba(27,71,75,.075); }
+.order-card>header { height: 78rpx; }
+.order-status { padding: 8rpx 13rpx; border-radius: 999rpx; font-size: 19rpx; }
+.order-status.orange { color: #b95725; background: #fff1e8; }
+.order-status.cyan { color: $dz-brand-deep; background: $dz-brand-pale; }
+.order-status.green { color: #287a4b; background: #eaf8ef; }
+.order-status.gray { color: #697679; background: #f0f4f4; }
+.order-card>header i { width: 11rpx; height: 11rpx; margin-right: 8rpx; }
+.customer-avatar { border: 2rpx solid rgba(255,255,255,.92); border-radius: 23rpx; box-shadow: 0 9rpx 23rpx rgba(24,83,87,.09); }
+.order-copy .strong-text { font-size: 24rpx; }
+.amount { min-width: 112rpx; padding: 10rpx 12rpx; border-radius: 17rpx; background: #fff7ef; }
+.amount .strong-text { font-size: 27rpx; }
+.note { border: 1rpx solid rgba(220,228,229,.7); border-radius: 16rpx; background: #f8fafa; }
+.evidence { border: 1rpx solid rgba(17,193,196,.11); border-radius: 19rpx; }
+.order-card>footer { margin: 0 -22rpx; padding: 0 22rpx; border-top-color: rgba(218,229,230,.75); background: #fbfdfd; }
+.order-card>footer button { border-radius: 999rpx; background: $dz-gradient-brand; }
+.order-card>footer button.outline { background: #fff; }
+.provider-orders-page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif; }
+.page-head .strong-text { font-size: 32rpx; line-height: 1.15; }
+.tab-row button { font-size: 21rpx; font-weight: 560; }
+.tab-row text { font-variant-numeric: tabular-nums; font-weight: 700; }
+.list-context view>text { font-size: 17rpx; letter-spacing: .02em; }
+.list-context .strong-text { font-size: 28rpx; line-height: 1.15; }
+.list-context>text { font-variant-numeric: tabular-nums; }
+.order-status { font-size: 20rpx; font-weight: 700; line-height: 1.2; }
+.order-number>text { font-size: 17rpx; letter-spacing: .015em; }
+.order-number>button { font-size: 19rpx; }
+.order-copy .strong-text { font-size: 25rpx; line-height: 1.28; }
+.meta-line text { font-size: 19rpx; line-height: 1.35; }
+.amount small { font-size: 17rpx; }
+.amount .strong-text { font-size: 30rpx; line-height: 1; font-variant-numeric: tabular-nums; }
+.progress-copy .strong-text { font-size: 20rpx; line-height: 1.25; }
+.progress-copy text { font-size: 18rpx; line-height: 1.45; }
+.order-card>footer button { font-size: 21rpx; font-weight: 700; }
+/* #ifdef H5 */
+.page-head,.tabs{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+@media (prefers-reduced-motion: reduce) {
+  .tab-row button, .order-card>footer button { transition: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .page-head, .tabs { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+/* #endif */
+
+/* 达人订单重设计：完整展示全部筛选，放大任务信息，收敛装饰层。 */
+.provider-orders-page{background:linear-gradient(180deg,#edfafa 0,#f5f9f9 350rpx,#f2f6f6 100%)}
+.page-head{height:100rpx;border-bottom:0;background:rgba(248,252,252,.95)}.head-spacer,.page-head>button{width:92rpx;height:84rpx;flex-basis:92rpx}.page-head .strong-text{font-size:34rpx;letter-spacing:0}.page-head .refresh image{width:42rpx;height:42rpx}
+.tabs{top:calc(100rpx + env(safe-area-inset-top));height:94rpx;border-bottom:1rpx solid rgba(214,230,231,.58);background:rgba(248,252,252,.95);box-shadow:0 10rpx 26rpx rgba(29,70,74,.045)}.tab-row{display:grid;width:100%;min-width:0;height:94rpx;gap:4rpx;padding:9rpx 18rpx 11rpx;grid-template-columns:repeat(6,minmax(0,1fr))}.tab-row button{min-width:0;width:100%;height:70rpx;padding:0 2rpx;border:0;border-radius:18rpx;font-size:21rpx;font-weight:600;line-height:70rpx}.tab-row button.active{border:0;color:$dz-brand-deep;background:rgba(221,248,247,.92);box-shadow:none}.tab-row text{min-width:25rpx;height:25rpx;margin-left:4rpx;border-radius:13rpx;font-size:15rpx;line-height:25rpx;vertical-align:2rpx}
+.order-content{padding-top:24rpx;padding-bottom:58rpx}.list-context{align-items:center;margin:0 4rpx 18rpx}.list-context>view{gap:0}.list-context view>text{display:none}.list-context .strong-text{font-size:30rpx}.list-context>text{padding:0;border:0;background:transparent;font-size:21rpx;font-variant-numeric:tabular-nums}
+.order-card{margin-bottom:22rpx;padding:0 24rpx;border:1rpx solid rgba(218,229,230,.88);border-radius:28rpx;background:rgba(255,255,255,.97);box-shadow:$dz-shadow}.order-card>header{height:82rpx}.order-status{padding:6rpx 12rpx;font-size:22rpx}.order-number{gap:8rpx}.order-number>text{font-size:18rpx}.order-number>button{height:58rpx;padding:0 6rpx;font-size:22rpx;line-height:58rpx}
+.order-main{padding:26rpx 0 24rpx}.customer-avatar{width:92rpx;height:104rpx;border:0;border-radius:24rpx;font-size:34rpx;box-shadow:none}.order-copy{gap:10rpx;margin-left:18rpx}.order-copy .strong-text{font-size:27rpx;line-height:1.35}.meta-line image{width:28rpx;height:28rpx;margin-right:8rpx}.meta-line text{font-size:21rpx;line-height:1.45}.amount{min-width:120rpx;gap:8rpx;margin-left:10rpx;padding:12rpx 14rpx;border-radius:20rpx;background:#fff5ed}.amount small{font-size:18rpx}.amount .strong-text{font-size:32rpx;line-height:1;white-space:nowrap}
+.note{margin-bottom:20rpx;padding:16rpx 18rpx;border:0;border-radius:18rpx;background:#f3f7f7;font-size:21rpx;line-height:1.5}.evidence{min-height:104rpx;margin-bottom:18rpx;padding:14rpx;border-radius:20rpx}.evidence image{width:78rpx;height:78rpx;border-radius:15rpx}.evidence view{gap:6rpx;margin-left:16rpx}.evidence .strong-text{font-size:23rpx}.evidence text,.evidence b{font-size:20rpx}
+.order-card>footer{min-height:130rpx;margin:0 -24rpx;padding:0 24rpx;background:#fbfdfd}.progress-copy{gap:7rpx;padding-right:14rpx}.progress-copy .strong-text{font-size:23rpx}.progress-copy text{font-size:20rpx;line-height:1.45}.order-card>footer button{min-width:184rpx;height:82rpx;padding:0 24rpx;border-radius:24rpx;background:$dz-brand;font-size:23rpx;line-height:82rpx}
+.empty-state .strong-text{font-size:31rpx}.empty-state text{font-size:23rpx}
 </style>

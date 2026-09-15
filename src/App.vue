@@ -14,7 +14,7 @@ page {
   min-height: 100%;
   color: $dz-text-primary;
   background: $dz-page;
-  font-family: 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', sans-serif;
 }
 
 view, text, image, button, input, scroll-view { box-sizing: border-box; }

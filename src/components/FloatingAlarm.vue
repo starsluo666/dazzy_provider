@@ -18,7 +18,7 @@
       >
         <button
           class="floating-alarm-button"
-          :class="{ 'is-dragging': dragging, 'is-disabled': disabled }"
+          :class="{ 'is-dragging': dragging, 'is-disabled': disabled, 'is-compact': compact }"
           :disabled="disabled"
           hover-class="floating-alarm-button--pressed"
           aria-label="紧急报警，可拖动位置，点击后需再次确认"
@@ -27,11 +27,11 @@
           <view class="alarm-symbol" aria-hidden="true">
             <image class="alarm-icon" src="/static/icons/alarm.svg" mode="aspectFit" />
           </view>
-          <view class="alarm-copy">
+          <view v-if="!compact" class="alarm-copy">
             <strong class="alarm-title">紧急求助</strong>
             <text class="alarm-hint">{{ dragging ? '松开后吸附' : '点击后确认' }}</text>
           </view>
-          <view class="drag-grip" aria-hidden="true"><i class="drag-dot" /><i class="drag-dot" /><i class="drag-dot" /></view>
+          <view v-if="!compact" class="drag-grip" aria-hidden="true"><i class="drag-dot" /><i class="drag-dot" /><i class="drag-dot" /></view>
         </button>
       </movable-view>
     </movable-area>
@@ -42,7 +42,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { onResize } from '@dcloudio/uni-app'
 
-defineProps<{ disabled?: boolean }>()
+const props = withDefaults(defineProps<{ disabled?: boolean; compact?: boolean }>(), { compact: false })
 
 const emit = defineEmits<{ alarm: [] }>()
 
@@ -62,6 +62,7 @@ interface PositionPoint {
 const STORAGE_KEY = 'dazzy_provider_floating_alarm_position_v1'
 const CONTROL_WIDTH_RPX = 178
 const CONTROL_HEIGHT_RPX = 88
+const COMPACT_CONTROL_RPX = 96
 const EDGE_RPX = 18
 const DOCK_CLEARANCE_RPX = 148
 
@@ -116,8 +117,8 @@ function layoutControl() {
 
   areaWidth.value = width
   areaHeight.value = Math.max(1, viewportHeight - topInset - bottomInset)
-  controlWidth.value = CONTROL_WIDTH_RPX * scale
-  controlHeight.value = CONTROL_HEIGHT_RPX * scale
+  controlWidth.value = (props.compact ? COMPACT_CONTROL_RPX : CONTROL_WIDTH_RPX) * scale
+  controlHeight.value = (props.compact ? COMPACT_CONTROL_RPX : CONTROL_HEIGHT_RPX) * scale
 
   const stored = readStoredPosition()
   const maxX = Math.max(0, areaWidth.value - controlWidth.value)
@@ -291,6 +292,9 @@ onResize(layoutControl)
 .floating-alarm-button { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif; }
 .alarm-title { font-size: 19rpx; line-height: 1.18; font-weight: 700; }
 .alarm-hint { font-size: 15rpx; line-height: 1.15; letter-spacing: .01em; }
+.floating-alarm-button.is-compact{justify-content:center;padding:8rpx;border-color:rgba(255,255,255,.92);border-radius:30rpx;background:rgba(255,255,255,.92);box-shadow:0 8rpx 22rpx rgba(38,72,76,.11),0 24rpx 56rpx rgba(38,72,76,.16)}
+.is-compact .alarm-symbol{width:66rpx;height:66rpx;flex-basis:66rpx;border-color:rgba(255,62,70,.14);background:linear-gradient(145deg,#fff8f8,#fff0f1);box-shadow:inset 0 1rpx 0 #fff,0 6rpx 16rpx rgba(217,45,56,.1)}
+.is-compact .alarm-icon{width:43rpx;height:43rpx}
 
 /* #ifdef H5 */
 .floating-alarm-button {

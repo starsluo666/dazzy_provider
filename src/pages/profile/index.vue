@@ -68,16 +68,22 @@
 
       <section class="feature-grid">
         <button class="feature-card location-feature dz-tappable" hover-class="dz-pressed" @tap="openWorkbench">
-          <view><strong class="strong-text">接单状态</strong><text>{{ data?.is_online ? '在线服务中' : '点击前往开启' }}</text></view>
-          <image :src="icons.location" mode="aspectFit" />
+          <view class="feature-orb" aria-hidden="true" />
+          <view class="feature-topline">
+            <view class="feature-icon-shell"><image :src="icons.featureStatus" mode="aspectFit" /></view>
+            <view class="online-chip" :class="{ offline: !data?.is_online }"><view class="online-dot" /><text>{{ data?.is_online ? '在线' : '离线' }}</text></view>
+          </view>
+          <view class="feature-copy"><text class="feature-title">接单状态</text><text class="feature-description">{{ data?.is_online ? '在线服务中' : '点击前往开启' }}</text></view>
         </button>
         <button class="feature-card schedule-feature dz-tappable" hover-class="dz-pressed" @tap="open('/pages/schedule/index')">
-          <view><strong class="strong-text">服务时间</strong><text>管理可接档期</text></view>
-          <image :src="icons.calendar" mode="aspectFit" />
+          <view class="feature-orb" aria-hidden="true" />
+          <view class="feature-topline"><view class="feature-icon-shell"><image :src="icons.featureSchedule" mode="aspectFit" /></view></view>
+          <view class="feature-copy"><text class="feature-title">服务时间</text><text class="feature-description">管理可接档期</text></view>
         </button>
         <button class="feature-card service-feature dz-tappable" hover-class="dz-pressed" @tap="open('/pages/services/index')">
-          <view><strong class="strong-text">服务管理</strong><text>{{ data?.service_count || 0 }} 项服务</text></view>
-          <image :src="icons.service" mode="aspectFit" />
+          <view class="feature-orb" aria-hidden="true" />
+          <view class="feature-topline"><view class="feature-icon-shell"><image :src="icons.featureService" mode="aspectFit" /></view></view>
+          <view class="feature-copy"><text class="feature-title">服务管理</text><text class="feature-description">{{ data?.service_count || 0 }} 项服务</text></view>
         </button>
       </section>
 
@@ -110,7 +116,9 @@ const icons = {
   calendar: '/static/icons/calendar.svg',
   service: '/static/icons/service.svg',
   check: '/static/icons/check.svg',
-  location: '/static/icons/location.svg',
+  featureStatus: '/static/icons/feature-status.svg',
+  featureSchedule: '/static/icons/feature-schedule.svg',
+  featureService: '/static/icons/feature-service.svg',
 } as const
 const entries = [
   { label: '消息中心', path: '/pages/messages/index', icon: '/static/tabbar/message.svg' },
@@ -120,7 +128,7 @@ const entries = [
   { label: '档期管理', path: '/pages/schedule/index', icon: '/static/icons/schedule.svg' },
   { label: '收入明细', path: '/pages/income/index', icon: '/static/icons/income.svg' },
   { label: '达人订单', path: '/pages/orders/index', icon: '/static/icons/orders.svg' },
-  { label: '账号安全', path: '/pages/security/index', icon: '/static/icons/security.svg' },
+  { label: '账号设置', path: '/pages/security/index', icon: '/static/icons/security.svg' },
 ]
 
 function open(path: string) { uni.navigateTo({ url: path }) }
@@ -163,6 +171,103 @@ onShow(async () => {
 .feature-grid{margin-top:16rpx;gap:12rpx}.feature-card{height:130rpx;padding:17rpx 15rpx;border-radius:24rpx}.feature-card>view{gap:7rpx}.feature-card .strong-text{font-size:23rpx;line-height:1.15;letter-spacing:-.01em}.feature-card text{font-size:19rpx;line-height:1.25}.feature-card image{width:66rpx;height:66rpx}
 .tools-panel{padding-bottom:17rpx}.tools-grid{margin-top:10rpx}.tool-entry{height:auto;min-height:98rpx;gap:8rpx;padding:4rpx 0}.tool-icon{width:56rpx;height:56rpx;border-radius:17rpx}.tool-icon image{width:37rpx;height:37rpx}.tool-entry>text{font-size:21rpx;font-weight:550;line-height:1.25}
 @media screen and (max-height:700px){.profile-title{height:76rpx}.identity-panel{height:126rpx}.income-overview{height:138rpx}.order-panel,.tools-panel,.feature-grid{margin-top:12rpx}.order-entry{height:110rpx}.feature-card{height:122rpx}.tool-entry{height:auto;min-height:92rpx}}
+
+/* 彩色功能卡：高光材质承载状态，图标与文字保持明确的上下阅读顺序。 */
+.feature-grid{margin-top:16rpx;gap:12rpx}
+.feature-card{
+  position:relative;
+  display:flex;
+  overflow:hidden;
+  height:196rpx;
+  align-items:stretch;
+  justify-content:space-between;
+  box-sizing:border-box;
+  margin:0;
+  padding:18rpx;
+  border:1rpx solid rgba(255,255,255,.5);
+  border-radius:30rpx;
+  color:#fff;
+  text-align:left;
+  box-shadow:inset 0 2rpx 1rpx rgba(255,255,255,.28),0 18rpx 38rpx rgba(32,82,91,.16);
+  flex-direction:column;
+}
+.feature-card.location-feature{
+  background:radial-gradient(circle at 18% 8%,rgba(255,255,255,.42),transparent 27%),linear-gradient(150deg,#38d1d1 0,#19bec7 54%,#11a9be 100%);
+  box-shadow:inset 0 2rpx 1rpx rgba(255,255,255,.3),0 20rpx 38rpx rgba(9,165,179,.25);
+}
+.feature-card.schedule-feature{
+  background:radial-gradient(circle at 22% 7%,rgba(255,255,255,.43),transparent 28%),linear-gradient(150deg,#ffba68 0,#ff9b52 52%,#ff8050 100%);
+  box-shadow:inset 0 2rpx 1rpx rgba(255,255,255,.3),0 20rpx 38rpx rgba(231,120,53,.24);
+}
+.feature-card.service-feature{
+  background:radial-gradient(circle at 22% 7%,rgba(255,255,255,.4),transparent 28%),linear-gradient(150deg,#91b3ff 0,#7297f2 50%,#587be2 100%);
+  box-shadow:inset 0 2rpx 1rpx rgba(255,255,255,.3),0 20rpx 38rpx rgba(78,111,211,.25);
+}
+.feature-card>.feature-orb{
+  position:absolute;
+  z-index:0;
+  right:-38rpx;
+  bottom:-64rpx;
+  display:block;
+  width:176rpx;
+  height:176rpx;
+  border:1rpx solid rgba(255,255,255,.08);
+  border-radius:50%;
+  background:rgba(255,255,255,.13);
+}
+.feature-card>.feature-topline{
+  position:relative;
+  z-index:2;
+  display:flex;
+  width:100%;
+  align-items:center;
+  justify-content:space-between;
+  gap:0;
+  flex-direction:row;
+}
+.feature-icon-shell{
+  display:flex;
+  width:66rpx;
+  height:66rpx;
+  flex:0 0 66rpx;
+  align-items:center;
+  justify-content:center;
+  border:1rpx solid rgba(255,255,255,.48);
+  border-radius:20rpx;
+  background:rgba(255,255,255,.15);
+  box-shadow:inset 0 1rpx 1rpx rgba(255,255,255,.24);
+}
+.feature-icon-shell image{
+  position:static;
+  width:40rpx;
+  height:40rpx;
+  opacity:1;
+}
+.online-chip{
+  display:flex;
+  height:40rpx;
+  align-items:center;
+  padding:0 12rpx;
+  border:1rpx solid rgba(255,255,255,.42);
+  border-radius:999rpx;
+  background:rgba(255,255,255,.18);
+  box-shadow:inset 0 1rpx 1rpx rgba(255,255,255,.2);
+}
+.online-dot{width:11rpx;height:11rpx;margin-right:7rpx;border:2rpx solid rgba(255,255,255,.55);border-radius:50%;background:#d9ff86;box-shadow:0 0 0 5rpx rgba(222,255,155,.12)}
+.online-chip.offline{background:rgba(15,55,63,.12)}
+.online-chip.offline .online-dot{border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.72);box-shadow:none}
+.online-chip text{color:#fff;font-size:18rpx;font-weight:750;line-height:1;white-space:nowrap}
+.feature-card>.feature-copy{
+  position:relative;
+  z-index:2;
+  display:flex;
+  min-width:0;
+  gap:6rpx;
+  flex-direction:column;
+}
+.feature-card .feature-title{color:#fff;font-size:29rpx;font-weight:750;line-height:1.08;letter-spacing:-.018em;white-space:nowrap}
+.feature-card .feature-description{overflow:hidden;color:rgba(255,255,255,.92);font-size:20rpx;font-weight:550;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+@media screen and (max-height:700px){.feature-card{height:180rpx;padding:16rpx;border-radius:27rpx}.feature-icon-shell{width:60rpx;height:60rpx;flex-basis:60rpx;border-radius:18rpx}.feature-icon-shell image{width:37rpx;height:37rpx}.feature-card .feature-title{font-size:27rpx}.feature-card .feature-description{font-size:19rpx}}
 /* #ifdef H5 */
 .head-action,.order-panel,.tools-panel{-webkit-backdrop-filter:saturate(155%) blur(18px);backdrop-filter:saturate(155%) blur(18px)}
 /* #endif */

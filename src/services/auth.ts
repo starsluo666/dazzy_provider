@@ -32,6 +32,13 @@ export async function logoutOtherSessions(currentPassword: string) {
   return response.data
 }
 
+export function closeAccount(currentPassword: string) {
+  return request<DataResponse<{ closed: boolean }>>('/auth/account/close/', {
+    method: 'POST',
+    data: { current_password: currentPassword },
+  })
+}
+
 export async function logout() {
   const refresh = getRefreshToken()
   try {

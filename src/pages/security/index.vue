@@ -4,25 +4,24 @@
       <view class="dz-safe-top" />
       <header class="dz-page-head dz-management-head dz-container">
         <button class="dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="goBack">‹</button>
-        <strong class="strong-text">账号与安全</strong>
+        <strong class="strong-text">账号设置</strong>
         <view class="head-space" />
       </header>
     </view>
 
     <main class="dz-container security-content">
-      <NetworkState v-if="loading" message="正在检查账号安全状态…" />
+      <NetworkState v-if="loading" message="正在加载账号设置…" />
       <NetworkState v-else-if="error" :message="error" action-text="重新加载" @action="load" />
       <template v-else>
         <section class="security-summary">
           <view class="summary-icon"><image src="/static/icons/security.svg" mode="aspectFit" /></view>
           <view class="summary-copy">
-            <view><strong class="strong-text">账号保护正常</strong><text>安全</text></view>
-            <p>登录密码已启用，敏感操作需要再次验证身份。</p>
+            <view><strong class="strong-text">账号状态正常</strong><text>正常</text></view>
+            <p>手机号与登录密码用于保护账号，敏感操作需要再次验证身份。</p>
           </view>
           <view class="summary-status">
             <view><text>账号状态</text><strong>{{ security?.account_status_label || '正常' }}</strong></view>
             <view><text>登录密码</text><strong>{{ security?.password_set ? '已设置' : '未设置' }}</strong></view>
-            <view><text>实名认证</text><strong>{{ workbench?.identity_status_label || '未认证' }}</strong></view>
           </view>
         </section>
 
@@ -33,11 +32,6 @@
             <view class="row-copy"><strong class="strong-text">登录手机号</strong><text>用于登录和身份核验</text></view>
             <view class="row-value"><strong>{{ security?.phone_masked }}</strong><text>已绑定</text></view>
           </view>
-          <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="查看实名认证" @tap="openIdentity">
-            <view class="row-icon"><image src="/static/icons/check.svg" mode="aspectFit" /></view>
-            <view class="row-copy"><strong class="strong-text">实名认证</strong><text>接单前必须完成达人实名认证</text></view>
-            <view class="row-value"><strong>{{ workbench?.identity_status_label || '未认证' }}</strong><b>›</b></view>
-          </button>
         </section>
 
         <h2 class="section-title">安全设置</h2>
@@ -47,10 +41,14 @@
             <view class="row-copy"><strong class="strong-text">登录密码</strong><text>定期更换密码可降低账号风险</text></view>
             <view class="row-value"><strong>修改</strong><b>›</b></view>
           </button>
-          <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="退出其他设备" @tap="openPanel('sessions')">
-            <view class="row-icon"><image src="/static/icons/devices.svg" mode="aspectFit" /></view>
-            <view class="row-copy"><strong class="strong-text">其他设备登录</strong><text>发现异常时让其他设备立即退出</text></view>
-            <view class="row-value"><strong class="danger-copy">退出</strong><b>›</b></view>
+        </section>
+
+        <h2 class="section-title">账号管理</h2>
+        <section class="setting-card danger-card">
+          <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="注销账号" @tap="openPanel('close')">
+            <view class="row-icon danger-icon"><image src="/static/icons/account-close.svg" mode="aspectFit" /></view>
+            <view class="row-copy"><strong class="strong-text danger-copy">账号注销</strong><text>永久停用当前账号并退出登录</text></view>
+            <view class="row-value"><strong class="danger-copy">注销</strong><b>›</b></view>
           </button>
         </section>
 
@@ -80,9 +78,9 @@
               <view class="password-field"><input v-model="confirmation" :password="!confirmationVisible" maxlength="20" placeholder="请再次输入新密码" /><button @tap.stop="confirmationVisible = !confirmationVisible">{{ confirmationVisible ? '隐藏' : '显示' }}</button></view>
             </label>
           </template>
-          <view v-else class="session-note"><strong class="strong-text">当前设备会保持登录</strong><text>操作成功后，其他手机、浏览器和小程序登录状态都会失效。</text></view>
-          <button class="submit-button" :class="{ danger: panel === 'sessions' }" :disabled="saving" @tap="submit">
-            {{ saving ? '正在处理…' : panel === 'password' ? '确认修改' : '退出其他设备' }}
+          <view v-else class="session-note"><strong class="strong-text">注销后无法恢复</strong><text>账号将被永久停用，所有设备都会退出登录；如仍有进行中的订单，请先完成处理。</text></view>
+          <button class="submit-button" :class="{ danger: panel === 'close' }" :disabled="saving" @tap="submit">
+            {{ saving ? '正在处理…' : panel === 'password' ? '确认修改' : '确认注销账号' }}
           </button>
         </view>
       </section>
@@ -95,15 +93,13 @@ import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 
 import NetworkState from '@/components/NetworkState.vue'
-import { changePassword, getAccountSecurity, logoutOtherSessions } from '@/services/auth'
-import { getProviderWorkbench } from '@/services/providers'
-import { guardCurrentPage } from '@/services/session'
-import type { AccountSecurity, ProviderWorkbench } from '@/types/api'
+import { changePassword, closeAccount, getAccountSecurity } from '@/services/auth'
+import { clearSession, guardCurrentPage } from '@/services/session'
+import type { AccountSecurity } from '@/types/api'
 
-type SecurityPanel = 'password' | 'sessions' | ''
+type SecurityPanel = 'password' | 'close' | ''
 
 const security = ref<AccountSecurity | null>(null)
-const workbench = ref<ProviderWorkbench | null>(null)
 const loading = ref(true)
 const error = ref('')
 const panel = ref<SecurityPanel>('')
@@ -115,12 +111,11 @@ const newVisible = ref(false)
 const confirmationVisible = ref(false)
 const saving = ref(false)
 
-const panelTitle = computed(() => panel.value === 'password' ? '修改登录密码' : '退出其他设备')
-const panelDescription = computed(() => panel.value === 'password' ? '修改后，其他设备上的旧登录状态将失效。' : '验证当前密码，保护账号不被继续使用。')
+const panelTitle = computed(() => panel.value === 'password' ? '修改登录密码' : '注销账号')
+const panelDescription = computed(() => panel.value === 'password' ? '修改后，其他设备上的旧登录状态将失效。' : '验证当前密码后永久停用当前账号。')
 
 function warn(title: string) { uni.showToast({ title, icon: 'none' }) }
 function goBack() { uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/profile/index' }) }) }
-function openIdentity() { uni.navigateTo({ url: '/pages/identity/index' }) }
 function openPanel(value: Exclude<SecurityPanel, ''>) { clearForm(); panel.value = value }
 function closePanel(force = false) { if (!saving.value || force) { panel.value = ''; clearForm() } }
 function clearForm() {
@@ -135,11 +130,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [securityResponse, workbenchResponse] = await Promise.all([getAccountSecurity(), getProviderWorkbench()])
+    const securityResponse = await getAccountSecurity()
     security.value = securityResponse.data
-    workbench.value = workbenchResponse.data
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '账号安全状态加载失败'
+    error.value = reason instanceof Error ? reason.message : '账号设置加载失败'
   } finally {
     loading.value = false
   }
@@ -151,14 +145,18 @@ async function submit() {
     if (newPassword.value === currentPassword.value) return warn('新密码不能与当前密码相同')
     if (newPassword.value !== confirmation.value) return warn('两次输入的新密码不一致')
   }
+  if (panel.value === 'close' && !await confirmAccountClosure()) return
   saving.value = true
   try {
     if (panel.value === 'password') {
       await changePassword(currentPassword.value, newPassword.value)
       uni.showToast({ title: '密码修改成功', icon: 'success' })
-    } else if (panel.value === 'sessions') {
-      await logoutOtherSessions(currentPassword.value)
-      uni.showToast({ title: '其他设备已退出', icon: 'success' })
+    } else if (panel.value === 'close') {
+      await closeAccount(currentPassword.value)
+      clearSession()
+      closePanel(true)
+      uni.reLaunch({ url: '/pages/auth/login' })
+      return
     }
     closePanel(true)
     await load()
@@ -167,6 +165,20 @@ async function submit() {
   } finally {
     saving.value = false
   }
+}
+
+function confirmAccountClosure(): Promise<boolean> {
+  return new Promise((resolve) => {
+    uni.showModal({
+      title: '确认注销账号？',
+      content: '注销后账号将无法登录且不可恢复，请确认已处理完所有订单。',
+      confirmText: '确认注销',
+      confirmColor: '#e5484d',
+      cancelText: '暂不注销',
+      success: ({ confirm }) => resolve(confirm),
+      fail: () => resolve(false),
+    })
+  })
 }
 
 onShow(() => { if (guardCurrentPage()) load() })
@@ -184,7 +196,7 @@ onShow(() => { if (guardCurrentPage()) load() })
 .summary-icon{width:82rpx;height:82rpx;border-radius:24rpx}.summary-icon image{width:50rpx;height:50rpx}
 .summary-copy>view{display:flex;align-items:center;gap:12rpx}.summary-copy strong{font-size:30rpx}.summary-copy>view text{padding:5rpx 12rpx;border-radius:14rpx;color:#13885d;background:#e9f9f0;font-size:18rpx;font-weight:700}
 .summary-copy p{margin:10rpx 0 0;color:$dz-text-secondary;font-size:21rpx;line-height:1.6}
-.summary-status{display:grid;grid-column:1/-1;grid-template-columns:repeat(3,1fr);margin-top:4rpx;padding-top:22rpx;border-top:1rpx solid $dz-border}
+.summary-status{display:grid;grid-column:1/-1;grid-template-columns:repeat(2,1fr);margin-top:4rpx;padding-top:22rpx;border-top:1rpx solid $dz-border}
 .summary-status view{display:flex;gap:8rpx;align-items:center;flex-direction:column;border-right:1rpx solid $dz-border}.summary-status view:last-child{border-right:0}.summary-status text{color:$dz-text-tertiary;font-size:18rpx}.summary-status strong{font-size:22rpx}
 .section-title{margin:34rpx 4rpx 16rpx;font-size:27rpx}
 .setting-card{overflow:hidden;border:1rpx solid $dz-border;border-radius:28rpx;background:#fff;box-shadow:$dz-shadow-soft}
@@ -215,6 +227,7 @@ onShow(() => { if (guardCurrentPage()) load() })
 .security-summary{grid-template-columns:88rpx 1fr;gap:22rpx;padding:28rpx;border:1rpx solid rgba(255,255,255,.95);border-radius:30rpx;background:rgba(255,255,255,.94);box-shadow:$dz-shadow}.summary-icon{width:88rpx;height:88rpx;border-radius:26rpx}.summary-icon image{width:52rpx;height:52rpx}.summary-copy>view{gap:13rpx}.summary-copy strong{font-size:31rpx}.summary-copy>view text{padding:6rpx 13rpx;border-radius:16rpx;font-size:19rpx}.summary-copy p{margin-top:10rpx;font-size:23rpx;line-height:1.55}.summary-status{margin-top:6rpx;padding-top:24rpx}.summary-status view{gap:9rpx}.summary-status text{font-size:20rpx}.summary-status strong{font-size:25rpx;font-variant-numeric:tabular-nums}
 .section-title{margin:34rpx 4rpx 15rpx;font-size:28rpx}.setting-card{border-color:rgba(220,232,233,.9);border-radius:28rpx;background:rgba(255,255,255,.96);box-shadow:$dz-shadow-soft}.setting-row{min-height:126rpx;padding:21rpx 24rpx;background:transparent}.row-icon{width:70rpx;height:70rpx;border-radius:21rpx}.row-icon image{width:42rpx;height:42rpx}.row-copy{gap:8rpx;margin-left:20rpx}.row-copy strong{font-size:26rpx}.row-copy text{font-size:21rpx;line-height:1.45}.row-value{align-items:center;gap:10rpx;margin-left:14rpx;flex-direction:row}.row-value strong{font-size:22rpx;white-space:nowrap}.row-value text{padding:4rpx 9rpx;border-radius:12rpx;background:#eaf8f1;font-size:18rpx;white-space:nowrap}.row-value b{font-size:36rpx}.security-tip{gap:10rpx;margin-top:24rpx;padding:24rpx 26rpx;border:1rpx solid #eee5c9;border-radius:24rpx;background:rgba(255,250,234,.88)}.security-tip strong{font-size:24rpx}.security-tip text{font-size:22rpx;line-height:1.65}
 .security-sheet{padding:14rpx 30rpx calc(34rpx + env(safe-area-inset-bottom));border-radius:40rpx 40rpx 0 0;background:rgba(253,254,254,.98);box-shadow:$dz-shadow-sheet}.sheet-handle{width:76rpx;height:8rpx;margin-bottom:18rpx}.security-sheet header{padding:10rpx 0 24rpx}.security-sheet header strong{font-size:33rpx}.security-sheet header text{font-size:22rpx;line-height:1.5}.security-sheet header button{width:72rpx;height:72rpx;font-size:38rpx;line-height:72rpx}.sheet-form{gap:24rpx}.sheet-form label{gap:11rpx}.sheet-form label>text{font-size:24rpx}.password-field{height:96rpx;padding:0 10rpx 0 24rpx;border-radius:22rpx}.password-field input{font-size:25rpx}.password-field button{min-width:92rpx;height:72rpx;font-size:22rpx;line-height:72rpx}.session-note{gap:9rpx;padding:24rpx;border-radius:22rpx}.session-note strong{font-size:25rpx}.session-note text{font-size:22rpx;line-height:1.6}.submit-button{height:92rpx;border-radius:24rpx;font-size:27rpx;line-height:92rpx}
+.danger-card{border-color:rgba(229,72,77,.18)}.danger-icon{background:$dz-danger-soft}.danger-copy{color:$dz-danger}
 /* #ifdef H5 */
 .security-hero,.security-sheet{-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px)}
 /* #endif */

@@ -1,5 +1,5 @@
 <template>
-  <view class="trend-chart-wrap">
+  <view class="trend-chart-wrap" :class="{ compact: props.compact }">
     <view class="trend-chart-head">
       <strong class="trend-chart-title strong-text">近7日服务趋势</strong>
       <text class="trend-chart-unit">单位：小时</text>
@@ -23,7 +23,7 @@
 import { computed } from 'vue'
 import type { ProviderTrendItem } from '@/types/api'
 
-const props = defineProps<{ items: ProviderTrendItem[] }>()
+const props = withDefaults(defineProps<{ items: ProviderTrendItem[]; compact?: boolean }>(), { compact: false })
 const maxTrend = computed(() => Math.max(1, ...props.items.map(item => item.service_hours)))
 
 function formatHours(value: number) {
@@ -40,4 +40,10 @@ function barStyle(value: number) {
 @use '../styles/tokens.scss' as *;
 
 .trend-chart-head{display:flex;align-items:center;justify-content:space-between;margin:12rpx 5rpx 0;padding-top:24rpx;border-top:1rpx dashed $dz-border}.trend-chart-title{font-size:24rpx}.trend-chart-unit{color:$dz-text-tertiary;font-size:17rpx}.trend-chart{position:relative;display:grid;height:260rpx;margin-top:14rpx;padding:22rpx 0 0;grid-template-columns:repeat(7,1fr)}.trend-grid-lines{position:absolute;top:42rpx;right:4rpx;bottom:38rpx;left:4rpx;display:flex;justify-content:space-between;flex-direction:column}.trend-grid-line{width:100%;border-top:1rpx dashed #e8eeee}.trend-column{position:relative;z-index:1;display:flex;min-width:0;align-items:center;justify-content:flex-end;flex-direction:column}.trend-value{height:27rpx;color:$dz-text-secondary;font-size:17rpx}.trend-track{display:flex;width:100%;height:160rpx;align-items:flex-end;justify-content:center}.trend-bar{width:24rpx;min-height:8rpx;border-radius:12rpx 12rpx 2rpx 2rpx;background:linear-gradient(180deg,#11c1c4,#a7efec);box-shadow:0 6rpx 12rpx rgba(17,193,196,.13)}.trend-label{height:31rpx;margin-top:8rpx;color:$dz-text-secondary;font-size:18rpx}
+.trend-chart-wrap.compact{margin-top:auto;padding-top:12rpx}
+.compact .trend-chart-head,.compact .trend-grid-lines,.compact .trend-value,.compact .trend-label{display:none}
+.compact .trend-chart{height:78rpx;margin-top:0;padding:0;align-items:flex-end}
+.compact .trend-column{height:78rpx;justify-content:flex-end}
+.compact .trend-track{width:100%;height:78rpx}
+.compact .trend-bar{width:18rpx;min-height:6rpx;border-radius:9rpx 9rpx 3rpx 3rpx;background:linear-gradient(180deg,#11c1c4 0%,#a9ece9 100%);box-shadow:none}
 </style>

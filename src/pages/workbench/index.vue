@@ -108,7 +108,7 @@
 
         <button class="pending-row" @tap="openPending">
           <view class="bell" aria-hidden="true" />
-          <text>待处理：<strong class="strong-text">{{ data.pending_acceptance_order_count }}</strong> 个待接订单、<strong class="strong-text">0</strong> 条未读消息</text>
+          <text>待处理：<strong class="strong-text">{{ data.pending_acceptance_order_count }}</strong> 个待接订单、<strong class="strong-text">{{ unreadCount }}</strong> 条未读消息</text>
           <b aria-hidden="true">›</b>
         </button>
       </template>
@@ -120,8 +120,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { computed, onUnmounted, ref } from 'vue'
+import { onHide, onShow } from '@dcloudio/uni-app'
 
 import NetworkState from '@/components/NetworkState.vue'
 import FloatingAlarm from '@/components/FloatingAlarm.vue'
@@ -134,6 +134,7 @@ import {
   startLocationReporting,
   stopLocationReporting,
 } from '@/services/locationReporter'
+import { getNotificationSummary } from '@/services/notifications'
 import {
   getProviderWorkbench,
   startProviderOnline,
@@ -151,6 +152,9 @@ const error = ref('')
 const toggling = ref(false)
 const alarming = ref(false)
 const locationWarning = ref('')
+const unreadCount = ref(0)
+let observedOrderUnread: number | null = null
+let notificationTimer: ReturnType<typeof setInterval> | null = null
 
 const avatarUrl = computed(() => typeof data.value?.avatar_url === 'string' ? data.value.avatar_url : '')
 const onboardingProgress = computed(() => data.value?.identity_status === 'verified' ? '继续完善即可开启接单' : '完成后开放在线接单')
@@ -277,7 +281,13 @@ function openUpcomingOrder() {
   if (!data.value?.upcoming_order) return
   uni.navigateTo({ url: `/pages/orders/index?orderNo=${encodeURIComponent(data.value.upcoming_order.order_no)}` })
 }
-function openPending() { uni.navigateTo({ url: '/pages/orders/index' }) }
+function openPending() {
+  if (data.value?.pending_acceptance_order_count) {
+    uni.navigateTo({ url: '/pages/orders/index' })
+    return
+  }
+  uni.navigateTo({ url: '/pages/messages/index' })
+}
 function openIdentity(){ uni.navigateTo({url:'/pages/identity/index'}) }
 function openProviderProfile(){ uni.navigateTo({url:'/pages/provider-profile/index'}) }
 function openServices(){ uni.navigateTo({url:'/pages/services/index'}) }
@@ -320,7 +330,38 @@ async function load(showLoading = true) {
   }
 }
 
-onShow(() => { if (guardCurrentPage()) void load() })
+async function refreshNotificationSummary(announce = false) {
+  try {
+    const summary = (await getNotificationSummary()).data
+    const orderUnread = summary.category_unread.order || 0
+    if (announce && observedOrderUnread !== null && orderUnread > observedOrderUnread) {
+      uni.showToast({ title: '收到新的待接订单', icon: 'none', duration: 2500 })
+      void load(false)
+    }
+    observedOrderUnread = orderUnread
+    unreadCount.value = summary.unread
+  } catch {}
+}
+
+function startNotificationPolling() {
+  if (notificationTimer) clearInterval(notificationTimer)
+  notificationTimer = setInterval(() => { void refreshNotificationSummary(true) }, 30000)
+}
+
+function stopNotificationPolling() {
+  if (!notificationTimer) return
+  clearInterval(notificationTimer)
+  notificationTimer = null
+}
+
+onShow(() => {
+  if (!guardCurrentPage()) return
+  void load()
+  void refreshNotificationSummary(false)
+  startNotificationPolling()
+})
+onHide(stopNotificationPolling)
+onUnmounted(stopNotificationPolling)
 </script>
 
 <style lang="scss" scoped>

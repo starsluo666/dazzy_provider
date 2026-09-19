@@ -218,3 +218,37 @@ export interface ProviderManagedOrder {
   meeting_longitude: string | number | null
   meeting_latitude: string | number | null
 }
+
+export type NotificationCategory = 'support' | 'order' | 'activity' | 'system'
+
+export interface NotificationSummary {
+  total: number
+  unread: number
+  category_unread: Record<NotificationCategory, number>
+}
+
+export interface UserNotification {
+  public_id: string
+  category: NotificationCategory
+  category_label: string
+  event_type: string
+  event_type_label: string
+  title: string
+  content: string
+  target_type: string
+  target_id: string
+  target_title: string
+  action_text: string
+  action_url: string
+  is_read: boolean
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationListResponse {
+  data: {
+    items: UserNotification[]
+    pagination: { page: number; page_size: number; total: number }
+    summary: NotificationSummary
+  }
+}

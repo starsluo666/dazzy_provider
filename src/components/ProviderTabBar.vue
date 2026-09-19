@@ -13,6 +13,7 @@
     >
       <view class="icon-shell">
         <image class="tab-icon" :src="tab.key === active ? tab.activeIcon : tab.icon" mode="aspectFit" aria-hidden="true" />
+        <i v-if="tab.key === 'profile' && unreadCount" class="notification-dot" aria-hidden="true" />
       </view>
       <text class="tab-label">{{ tab.label }}</text>
     </view>
@@ -20,7 +21,13 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
+
+import { getNotificationSummary } from '@/services/notifications'
+
 withDefaults(defineProps<{ active?: 'workbench' | 'orders' | 'profile' }>(), { active: 'workbench' })
+
+const unreadCount = ref(0)
 
 const tabs = [
   { key: 'workbench', label: '工作台', path: '/pages/workbench/index', icon: '/static/tabbar/home.svg', activeIcon: '/static/tabbar/home-active.svg' },
@@ -34,6 +41,10 @@ function open(path: string) {
   if (`/${current?.route}` === path) return
   uni.reLaunch({ url: path })
 }
+
+onMounted(async () => {
+  try { unreadCount.value = (await getNotificationSummary()).data.unread } catch {}
+})
 </script>
 
 <style lang="scss" scoped>
@@ -93,6 +104,7 @@ function open(path: string) {
 }
 
 .icon-shell {
+  position: relative;
   display: flex;
   width: 96rpx;
   height: 50rpx;
@@ -108,6 +120,18 @@ function open(path: string) {
 .tab.active .icon-shell { background: $dz-brand-soft; }
 .tab--pressed { transform: scale(0.96); opacity: .76; }
 .tab--pressed .icon-shell { background: $dz-brand-soft; }
+
+.notification-dot {
+  position: absolute;
+  top: -2rpx;
+  right: 17rpx;
+  width: 16rpx;
+  height: 16rpx;
+  border: 3rpx solid $dz-surface-card;
+  border-radius: 50%;
+  background: $dz-danger;
+  box-sizing: border-box;
+}
 
 /* #ifdef H5 */
 @media (prefers-reduced-transparency: reduce) {

@@ -19,7 +19,7 @@
         <section v-if="data.items.length" class="income-list">
           <button v-for="item in data.items" :key="item.settlement_no">
             <view class="record-head"><view><strong class="strong-text">{{ item.service_name }}</strong><text>{{ item.order_no }}</text></view><strong class="amount">+¥{{ formatAmount(item.settlement_amount) }}</strong></view>
-            <view class="record-foot"><text :class="`status ${item.status}`">{{ item.status_label }}</text><text>{{ item.settled_at ? `入账 ${formatDate(item.settled_at)}` : `预计 ${formatDate(item.freeze_until)} 入账` }}</text></view>
+            <view class="record-foot"><text :class="`status ${item.status}`">{{ item.status_label }}</text><text>{{ item.settled_at ? `账务结算 ${formatDate(item.settled_at)}` : `预计 ${formatDate(item.freeze_until)} 账务结算` }}</text></view>
             <view class="breakdown"><text>服务收入 ¥{{ formatAmount(item.service_income_amount) }}</text><text>交通及其他 ¥{{ formatAmount(item.transport_income_amount + item.other_income_amount) }}</text></view>
           </button>
         </section>

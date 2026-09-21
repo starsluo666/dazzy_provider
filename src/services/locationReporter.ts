@@ -30,16 +30,22 @@ let pollingMode = false
 let errorCallback: ((message: string) => void) | undefined
 let reportedCallback: ((location: ProviderLocationPayload) => void) | undefined
 
+function rounded(value: number, decimalPlaces: number, label: string): number {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) throw new Error(`${label}无效，请重新定位`)
+  return Number(numeric.toFixed(decimalPlaces))
+}
+
 function toPayload(result: LocationResult): ProviderLocationPayload {
   // 微信在无法获取速度时会返回 -1；后端约定未知速度应省略，而不是上传负值。
   const speed = typeof result.speed === 'number' && Number.isFinite(result.speed)
     && result.speed >= 0 && result.speed <= 100
-    ? result.speed
+    ? rounded(result.speed, 2, '定位速度')
     : undefined
   return {
-    longitude: result.longitude,
-    latitude: result.latitude,
-    accuracy_m: Number(result.accuracy || result.horizontalAccuracy || 0),
+    longitude: rounded(result.longitude, 7, '定位经度'),
+    latitude: rounded(result.latitude, 7, '定位纬度'),
+    accuracy_m: rounded(Number(result.accuracy || result.horizontalAccuracy || 0), 2, '定位精度'),
     located_at: new Date().toISOString(),
     ...(speed === undefined ? {} : { speed_mps: speed }),
   }

@@ -24,11 +24,12 @@
         </header>
 
         <section v-if="!data.can_accept_orders" class="onboarding-card">
-          <view class="onboarding-head"><view><text>接单准备</text><strong class="strong-text">还差 {{ data.onboarding_blockers.length }} 项</strong></view><text>{{ onboardingProgress }}</text></view>
+          <view class="onboarding-head"><view><text>接单准备</text><strong class="strong-text">{{ data.onboarding_status === 'pending_review' ? '综合审核中' : data.onboarding_status === 'rejected' ? '审核未通过' : `还差 ${data.onboarding_blockers.length} 项` }}</strong></view><text>{{ onboardingProgress }}</text></view>
+          <text v-if="data.onboarding_status === 'rejected'" class="onboarding-reason">{{ data.onboarding_rejection_reason }}</text>
           <view class="onboarding-steps">
-            <button class="dz-tappable" :class="{done:data.identity_status==='verified'}" hover-class="dz-pressed" @tap="openIdentity"><i>{{data.identity_status==='verified'?'✓':'1'}}</i><view><strong>实名认证</strong><text>{{identityStepCopy}}</text></view><b>›</b></button>
-            <button class="dz-tappable" :class="{done:data.is_profile_complete}" hover-class="dz-pressed" @tap="openProviderProfile"><i>{{data.is_profile_complete?'✓':'2'}}</i><view><strong>完善达人资料</strong><text>生活照、简介和服务城市</text></view><b>›</b></button>
-            <button class="dz-tappable" :class="{done:!data.onboarding_blockers.some(item=>item.includes('服务'))}" hover-class="dz-pressed" @tap="openServices"><i>{{!data.onboarding_blockers.some(item=>item.includes('服务'))?'✓':'3'}}</i><view><strong>配置服务</strong><text>至少添加并启用一项服务</text></view><b>›</b></button>
+            <button class="dz-tappable" :class="{done:data.identity_status==='verified'||data.identity_status==='pending'}" hover-class="dz-pressed" @tap="openIdentity"><i>{{data.identity_status==='verified'||data.identity_status==='pending'?'✓':'1'}}</i><view><strong>实名认证</strong><text>{{identityStepCopy}}</text></view><b>›</b></button>
+            <button class="dz-tappable" :class="{done:data.is_profile_complete||data.profile_review_status==='pending'}" hover-class="dz-pressed" @tap="openProviderProfile"><i>{{data.is_profile_complete||data.profile_review_status==='pending'?'✓':'2'}}</i><view><strong>完善达人资料</strong><text>{{ data.profile_review_status === 'pending' ? '资料已提交' : '生活照、简介和服务城市' }}</text></view><b>›</b></button>
+            <button class="dz-tappable" :class="{done:data.pending_service_revision_count>0||!data.onboarding_blockers.some(item=>item.includes('服务'))}" hover-class="dz-pressed" @tap="openServices"><i>{{data.pending_service_revision_count>0||!data.onboarding_blockers.some(item=>item.includes('服务'))?'✓':'3'}}</i><view><strong>配置服务</strong><text>{{ data.pending_service_revision_count > 0 ? '服务已提交' : '至少添加并启用一项服务' }}</text></view><b>›</b></button>
           </view>
         </section>
 
@@ -134,6 +135,7 @@ import {
   startLocationReporting,
   stopLocationReporting,
 } from '@/services/locationReporter'
+import { reverseGeocodeLocation, type ReverseGeocodedLocation } from '@/services/locations'
 import { getNotificationSummary } from '@/services/notifications'
 import {
   getProviderWorkbench,
@@ -157,7 +159,7 @@ let observedOrderUnread: number | null = null
 let notificationTimer: ReturnType<typeof setInterval> | null = null
 
 const avatarUrl = computed(() => typeof data.value?.avatar_url === 'string' ? data.value.avatar_url : '')
-const onboardingProgress = computed(() => data.value?.identity_status === 'verified' ? '继续完善即可开启接单' : '完成后开放在线接单')
+const onboardingProgress = computed(() => data.value?.onboarding_status === 'pending_review' ? '三项已自动提交' : data.value?.onboarding_status === 'rejected' ? '修改三项后自动重提' : '完成后自动提交开通审核')
 const identityStepCopy = computed(() => {
   if (data.value?.identity_status === 'pending') return '资料审核中'
   if (data.value?.identity_status === 'rejected') return '未通过，请修改后重试'
@@ -251,6 +253,40 @@ async function resumeReporter() {
   }
 }
 
+function normalizedCityName(value: string): string {
+  return value.trim().replace(/市$/, '')
+}
+
+function isServiceCity(location: ReverseGeocodedLocation): boolean {
+  if (!data.value) return true
+  if (location.city_code && data.value.service_city_code) {
+    return location.city_code === data.value.service_city_code
+  }
+  return normalizedCityName(location.city_name) === normalizedCityName(data.value.service_city_name)
+}
+
+function confirmOutsideServiceCity(location: ReverseGeocodedLocation): Promise<boolean> {
+  return new Promise((resolve) => {
+    uni.showModal({
+      title: '不在常用城市',
+      content: `当前定位在${location.city_name || '其他城市'}，常用城市为${data.value?.service_city_name || '未设置'}，是否确认开始接单？`,
+      confirmText: '确认接单',
+      cancelText: '暂不接单',
+      success: result => resolve(result.confirm),
+      fail: () => resolve(false),
+    })
+  })
+}
+
+async function confirmLocationCity(longitude: number, latitude: number): Promise<boolean> {
+  try {
+    const location = (await reverseGeocodeLocation(longitude, latitude)).data
+    return isServiceCity(location) || await confirmOutsideServiceCity(location)
+  } catch {
+    return true
+  }
+}
+
 async function toggleOnline(event: Event) {
   if (!data.value || toggling.value) return
   const enabled = Boolean((event as CustomEvent<{ value: boolean }>).detail.value)
@@ -259,6 +295,10 @@ async function toggleOnline(event: Event) {
   try {
     if (enabled) {
       const location = await getCurrentProviderLocation()
+      if (!await confirmLocationCity(location.longitude, location.latitude)) {
+        await load(false)
+        return
+      }
       const session = (await startProviderOnline(location)).data
       applySession(session)
       await beginReporter(session, location)
@@ -369,6 +409,7 @@ onUnmounted(stopNotificationPolling)
 .workbench-page{position:relative;overflow:hidden;background:linear-gradient(180deg,#effafa 0,#f8fbfb 360rpx,#f4f8f8 100%)}.workbench-content{position:relative;z-index:1;padding-top:22rpx;padding-bottom:32rpx;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif}.ambient{position:absolute;border-radius:50%;background:rgba(104,222,220,.1);filter:blur(1rpx);pointer-events:none}.ambient-one{top:20rpx;right:-120rpx;width:390rpx;height:390rpx}.ambient-two{top:155rpx;right:26rpx;width:180rpx;height:180rpx;border:32rpx solid rgba(255,255,255,.38);background:transparent}
 .identity-head{display:flex;align-items:center;min-height:148rpx;padding:8rpx 10rpx}.avatar{display:flex;overflow:hidden;width:100rpx;height:116rpx;align-items:center;justify-content:center;border:3rpx solid rgba(255,255,255,.92);border-radius:25rpx;color:$dz-brand-deep;background:$dz-brand-soft;box-shadow:0 10rpx 28rpx rgba(31,76,82,.1);font-size:38rpx;font-weight:750}.avatar image{width:100%;height:100%}.identity-copy{display:flex;gap:10rpx;margin-left:22rpx;flex-direction:column}.identity-copy>.strong-text{font-size:38rpx;line-height:1.08;letter-spacing:-.02em}.identity-copy>view{display:flex;align-items:center;color:$dz-brand-deep;font-size:22rpx;font-weight:550}.identity-copy image{width:32rpx;height:32rpx;margin-right:8rpx}
 .onboarding-card{margin:14rpx 0 24rpx;padding:25rpx;border:1rpx solid #bdeae8;border-radius:29rpx;background:rgba(255,255,255,.94);box-shadow:$dz-shadow-soft}.onboarding-head{display:flex;align-items:flex-end;justify-content:space-between}.onboarding-head>view{display:flex;gap:6rpx;flex-direction:column}.onboarding-head>view>text{color:$dz-brand;font-size:19rpx;font-weight:700}.onboarding-head strong{font-size:28rpx}.onboarding-head>text{color:$dz-text-tertiary;font-size:18rpx}.onboarding-steps{margin-top:18rpx}.onboarding-steps button{display:flex;width:100%;min-height:94rpx;align-items:center;margin:0;padding:12rpx 0;border:0;border-top:1rpx solid $dz-border;background:transparent;text-align:left}.onboarding-steps button::after,.order-button::after,.pending-row::after{display:none}.onboarding-steps i{display:flex;width:44rpx;height:44rpx;flex:none;align-items:center;justify-content:center;border-radius:50%;color:#fff;background:#aebabb;font-size:19rpx;font-style:normal}.onboarding-steps button.done i{background:$dz-brand}.onboarding-steps button>view{display:flex;gap:5rpx;margin-left:15rpx;flex:1;flex-direction:column}.onboarding-steps strong{font-size:22rpx}.onboarding-steps button.done strong{color:$dz-brand-deep}.onboarding-steps text{color:$dz-text-secondary;font-size:18rpx}.onboarding-steps b{color:$dz-text-tertiary;font-size:34rpx;font-weight:400}
+.onboarding-reason{display:block;margin-top:14rpx;padding:12rpx 15rpx;border-radius:12rpx;color:#a94335;background:#fff1ef;font-size:20rpx;line-height:1.45}
 .online-hero{position:relative;margin-top:12rpx;padding:32rpx 30rpx 28rpx;border:1rpx solid rgba(17,193,196,.38);border-radius:30rpx;background:rgba(245,254,254,.94);box-shadow:0 8rpx 20rpx rgba(8,71,76,.06),0 28rpx 68rpx rgba(8,91,96,.1)}.online-main{display:flex;align-items:center}.online-check{display:flex;width:88rpx;height:88rpx;flex:0 0 88rpx;align-items:center;justify-content:center;border-radius:50%;background:$dz-brand;box-shadow:0 8rpx 22rpx rgba(8,84,88,.14)}.online-check image{width:66rpx;height:66rpx}.online-copy{min-width:0;margin-left:23rpx;flex:1}.online-copy>.strong-text{display:block;color:$dz-brand-deep;font-size:40rpx;line-height:1.16;letter-spacing:-.02em}.location-line{display:flex;align-items:center;margin-top:12rpx;color:$dz-text-secondary;font-size:22rpx}.location-line image{width:30rpx;height:30rpx;margin-right:7rpx}.online-switch{display:flex;min-width:108rpx;min-height:88rpx;align-items:center;justify-content:center;margin-left:14rpx;transform:scale(1.04)}.online-helper{display:block;margin-top:24rpx;color:$dz-text-secondary;font-size:22rpx;line-height:1.5}.online-hero.offline{border-color:$dz-border;background:rgba(255,255,255,.95);box-shadow:$dz-shadow-soft}.offline .online-check{background:#a8b5b8;box-shadow:none}.offline .online-copy>.strong-text{color:$dz-text-primary}.pause-mark{display:flex;gap:10rpx}.pause-mark i{width:10rpx;height:36rpx;border-radius:5rpx;background:#fff}.location-warning{margin-top:18rpx;padding:13rpx 17rpx;border-radius:14rpx;color:#934b1f;background:#fff0e4;font-size:19rpx;line-height:1.4}
 .business-card{margin-top:24rpx;padding:28rpx 22rpx 24rpx;border:1rpx solid rgba(215,228,229,.9);border-radius:28rpx;background:rgba(255,255,255,.96);box-shadow:$dz-shadow-soft}.business-card h2{margin:0 4rpx 25rpx;font-size:29rpx}.metrics-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}.metric{display:flex;min-width:0;align-items:center;justify-content:center;padding:4rpx 8rpx 17rpx;border-left:1rpx solid $dz-border;text-align:center;flex-direction:column}.metric:first-child{border-left:0}.metric>text{color:$dz-text-secondary;font-size:19rpx;white-space:nowrap}.metric .strong-text{margin-top:12rpx;font-size:33rpx;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}.metric.revenue .strong-text{color:$dz-brand;font-size:36rpx}.metric-value-row{display:flex;min-width:0;align-items:baseline;justify-content:center;gap:5rpx;margin-top:12rpx;line-height:1;white-space:nowrap}.metric-value-row .strong-text{margin-top:0;flex:none}.metric-value-row .metric-unit{flex:none;color:$dz-text-secondary;font-size:17rpx;font-weight:500;line-height:1;white-space:nowrap}
 .next-order{position:relative;min-height:300rpx;margin-top:24rpx;padding:28rpx;border:1rpx solid rgba(17,193,196,.5);border-radius:30rpx;background:rgba(255,255,255,.96);box-shadow:$dz-shadow-soft}.next-copy{position:relative;z-index:2;width:61%}.section-label{display:flex;align-items:center;color:$dz-brand;font-size:25rpx}.section-label image{width:38rpx;height:38rpx;margin-right:12rpx}.next-time{margin-top:24rpx;font-size:30rpx;font-weight:700;white-space:nowrap}.next-time .strong-text{margin-left:10rpx;color:$dz-orange}.next-order h2{margin:18rpx 0 0;font-size:33rpx}.order-meta{display:flex;gap:10rpx;margin-top:18rpx;color:$dz-text-secondary;font-size:20rpx;flex-direction:column}.order-meta text::before{display:inline-block;width:9rpx;height:9rpx;margin-right:9rpx;border:3rpx solid $dz-brand;border-radius:50%;content:''}.travel-art{position:absolute;z-index:1;top:30rpx;right:12rpx;width:43%;height:205rpx}.order-button{position:absolute;z-index:3;right:25rpx;bottom:22rpx;width:195rpx;height:70rpx;margin:0;border:0;border-radius:36rpx;color:#fff;background:linear-gradient(135deg,#18d0cd,#08afb8);font-size:23rpx;font-weight:650;line-height:70rpx;box-shadow:0 10rpx 22rpx rgba(8,169,177,.2)}.empty-next>h2{margin-top:28rpx;font-size:29rpx}.empty-next>text{display:block;margin-top:12rpx;color:$dz-text-secondary;font-size:20rpx;line-height:1.5}

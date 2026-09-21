@@ -50,6 +50,11 @@ export interface ProviderWorkbench {
   admin_restriction_reason: string
   identity_status: ProviderIdentityStatus
   identity_status_label: string
+  onboarding_status: 'incomplete' | 'pending_review' | 'approved' | 'rejected'
+  onboarding_status_label: string
+  onboarding_rejection_reason: string
+  profile_review_status: 'not_submitted' | 'pending' | 'approved' | 'rejected'
+  pending_service_revision_count: number
   is_profile_complete: boolean
   can_accept_orders: boolean
   onboarding_blockers: string[]
@@ -88,6 +93,7 @@ export interface ProviderIdentity {
 }
 
 export interface ProviderProfileData {
+  display_name: string
   bio: string
   lifestyle_photo_id: string | null
   lifestyle_photo_url: string | null
@@ -95,6 +101,8 @@ export interface ProviderProfileData {
   service_city_name: string
   max_service_radius_km: number
   is_profile_complete: boolean
+  review_status: 'not_submitted' | 'pending' | 'approved' | 'rejected'
+  review_rejection_reason: string
   updated_at: string
 }
 
@@ -142,10 +150,19 @@ export interface ProviderLocationPayload {
   speed_mps?: number
 }
 
-export interface ServiceCategory { id: number; name: string; slug: string }
+export interface ServiceCategory {
+  id: number
+  name: string
+  slug: string
+  hourly_min_price_amount: number
+  hourly_max_price_amount: number
+  per_session_min_price_amount: number
+  per_session_max_price_amount: number
+}
 
 export interface ProviderManagedService {
-  id: number
+  id: number | null
+  revision_id: number | null
   category_id: number
   category: string
   category_slug: string
@@ -154,6 +171,13 @@ export interface ProviderManagedService {
   estimated_duration_minutes: number | null
   description: string
   is_active: boolean
+  review_status: 'pending' | 'approved' | 'rejected'
+  review_action: '' | 'create' | 'update' | 'reactivate'
+  review_rejection_reason: string
+  hourly_min_price_amount: number
+  hourly_max_price_amount: number
+  per_session_min_price_amount: number
+  per_session_max_price_amount: number
   created_at: string
   updated_at: string
 }

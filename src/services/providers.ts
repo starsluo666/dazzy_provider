@@ -57,7 +57,7 @@ export const stopProviderOnline = () =>
   request<DataResponse<ProviderOnlineSession>>('/providers/me/online/stop/', { method: 'POST', data: {} })
 
 export const getServiceCategories = () =>
-  request<{ data: { items: ServiceCategory[] } }>('/service-categories/', { skipAuth: true })
+  request<{ data: { items: ServiceCategory[] } }>('/service-categories/')
 export const getMyProviderServices = () =>
   request<{ data: { items: ProviderManagedService[] } }>('/providers/me/services/')
 export const createMyProviderService = (data: Record<string, unknown>) =>

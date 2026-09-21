@@ -16,6 +16,9 @@
           <text>生活照、个人介绍和服务范围将展示在达人主页。</text>
         </section>
 
+        <section v-if="data.review_status === 'pending'" class="review-notice">资料已提交审核，审核期间用户端继续展示原资料。</section>
+        <section v-else-if="data.review_status === 'rejected'" class="review-notice rejected">审核未通过：{{ data.review_rejection_reason }}</section>
+
         <section class="photo-panel">
           <image v-if="preview" :src="preview" mode="aspectFill" />
           <view v-else class="photo-empty"><b>＋</b><text>生活照</text></view>
@@ -26,6 +29,11 @@
           <button class="photo-action dz-tappable" hover-class="dz-pressed" :disabled="uploading" @tap="choosePhoto">
             {{ preview ? '更换' : '上传' }}
           </button>
+        </section>
+
+        <section class="form-panel">
+          <view class="panel-heading"><strong class="strong-text">达人名称</strong><text>公开展示 · 无需唯一</text></view>
+          <input v-model="form.display_name" class="name-input" maxlength="30" placeholder="请输入公开展示的达人名称" />
         </section>
 
         <section class="form-panel">
@@ -46,7 +54,7 @@
           </view>
         </section>
 
-        <view class="save-bar"><button class="save dz-tappable" hover-class="dz-pressed" :disabled="saving || uploading" @tap="save">{{ saving ? '保存中…' : '保存资料' }}</button></view>
+        <view class="save-bar"><button class="save dz-tappable" hover-class="dz-pressed" :disabled="saving || uploading || data.review_status === 'pending'" @tap="save">{{ saving ? '提交中…' : data.review_status === 'pending' ? '资料审核中' : '提交资料审核' }}</button></view>
       </template>
     </main>
   </view>
@@ -75,7 +83,7 @@ const filePath = ref('')
 const file = shallowRef<unknown>()
 const data = ref<ProviderProfileData | null>(null)
 const form = reactive({
-  bio: '', lifestyle_photo_id: null as string | null, service_city_code: '130400',
+  display_name: '', bio: '', lifestyle_photo_id: null as string | null, service_city_code: '130400',
   service_city_name: '邯郸市', max_service_radius_km: 10,
 })
 
@@ -83,6 +91,7 @@ function back() { uni.navigateBack() }
 function apply(value: ProviderProfileData) {
   data.value = value
   Object.assign(form, {
+    display_name: value.display_name,
     bio: value.bio,
     lifestyle_photo_id: value.lifestyle_photo_id,
     service_city_code: value.service_city_code || '130400',
@@ -116,6 +125,7 @@ function choosePhoto() {
   })
 }
 async function save() {
+  if (form.display_name.trim().length < 2) return uni.showToast({ title: '达人名称至少2个字', icon: 'none' })
   if (form.bio.trim().length < 10) return uni.showToast({ title: '达人简介至少10个字', icon: 'none' })
   saving.value = true
   try {
@@ -125,10 +135,10 @@ async function save() {
       form.lifestyle_photo_id = uploaded.data.id
       uploading.value = false
     }
-    apply((await saveProviderProfile({ ...form, bio: form.bio.trim() })).data)
+    apply((await saveProviderProfile({ ...form, display_name: form.display_name.trim(), bio: form.bio.trim() })).data)
     filePath.value = ''
     file.value = undefined
-    uni.showToast({ title: '资料已保存', icon: 'success' })
+    uni.showToast({ title: '资料已提交审核', icon: 'success' })
   } catch (reason) {
     uni.showToast({ title: getErrorMessage(reason), icon: 'none' })
   } finally {
@@ -152,6 +162,7 @@ main{padding-top:12rpx}
 .photo-panel,.form-panel,.settings-panel{border:1rpx solid rgba(220,232,233,.9);border-radius:28rpx;background:rgba(255,255,255,.96);box-shadow:$dz-shadow-soft}
 .photo-panel{display:flex;min-height:176rpx;align-items:center;padding:24rpx}.photo-panel>image,.photo-empty{display:flex;width:128rpx;height:128rpx;flex:0 0 128rpx;align-items:center;justify-content:center;border-radius:24rpx;background:$dz-brand-pale}.photo-empty{gap:4rpx;color:$dz-brand;flex-direction:column}.photo-empty b{font-size:36rpx;line-height:1}.photo-empty text{font-size:20rpx}.photo-copy{display:flex;min-width:0;gap:10rpx;margin-left:22rpx;flex:1;flex-direction:column}.photo-copy>view{display:flex;align-items:center;gap:12rpx}.photo-copy .strong-text{font-size:28rpx}.photo-copy>view>text{padding:5rpx 11rpx;border-radius:14rpx;color:$dz-brand-deep;background:$dz-brand-soft;font-size:18rpx;font-weight:650}.photo-copy>text{color:$dz-text-secondary;font-size:22rpx;line-height:1.5}.photo-action{height:68rpx;flex:none;margin:0 0 0 12rpx;padding:0 23rpx;border:1rpx solid #b8dddd;border-radius:21rpx;color:$dz-brand-deep;background:#fff;font-size:23rpx;font-weight:650;line-height:68rpx}
 .form-panel,.settings-panel{margin-top:20rpx;padding:26rpx}.panel-heading{display:flex;align-items:flex-start;justify-content:space-between}.panel-heading .strong-text,.setting-row .strong-text{font-size:27rpx}.panel-heading>text{color:$dz-text-tertiary;font-size:21rpx}.form-panel textarea{width:100%;height:168rpx;margin-top:18rpx;padding:20rpx;border:1rpx solid $dz-border;border-radius:20rpx;background:#f8fbfb;font-size:25rpx;line-height:1.65}.count{display:block;margin-top:10rpx;color:$dz-text-tertiary;font-size:21rpx;text-align:right}
+.review-notice{margin-bottom:20rpx;padding:22rpx 24rpx;border:1rpx solid #9bdedc;border-radius:20rpx;color:$dz-brand-deep;background:#effcfc;font-size:23rpx;line-height:1.55}.review-notice.rejected{border-color:#f2c3bd;color:#b43a2f;background:#fff4f2}.name-input{width:100%;margin-top:18rpx;padding:20rpx;border:1rpx solid $dz-border;border-radius:20rpx;background:#f8fbfb;font-size:25rpx;box-sizing:border-box}
 .settings-panel{padding:0 26rpx}.setting-row{display:flex;min-height:126rpx;align-items:center;justify-content:space-between;border-bottom:1rpx solid $dz-border}.setting-row>view{display:flex;gap:7rpx;flex-direction:column}.setting-row>view>text,.radius-row .panel-heading view>text{color:$dz-text-secondary;font-size:21rpx;line-height:1.45}.setting-row picker{flex:none;margin-left:18rpx;color:$dz-text-primary;font-size:25rpx;font-weight:650}.setting-row picker b{margin-left:5rpx;color:$dz-text-tertiary;font-size:31rpx;font-weight:400}
 .radius-row{padding:25rpx 0 22rpx}.radius-row .panel-heading>view{display:flex;gap:7rpx;flex-direction:column}.radius-row .panel-heading>b{color:$dz-brand-deep;font-size:28rpx;font-weight:750;font-variant-numeric:tabular-nums}.radius-row slider{margin:26rpx 0 8rpx}.range-label{display:flex;justify-content:space-between;color:$dz-text-tertiary;font-size:19rpx}
 .save-bar{position:fixed;z-index:40;right:0;bottom:0;left:0;max-width:750px;margin:auto;padding:18rpx 30rpx calc(18rpx + env(safe-area-inset-bottom));background:rgba(250,253,253,.96);box-shadow:0 -14rpx 44rpx rgba(24,55,58,.1)}.save{width:100%;height:88rpx;margin:0;border:0;border-radius:24rpx;color:#fff;background:$dz-brand;box-shadow:$dz-shadow-control;font-size:27rpx;font-weight:700;line-height:88rpx}

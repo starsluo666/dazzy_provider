@@ -34,16 +34,16 @@
               <text>新增服务</text>
             </button>
           </view>
-          <text class="overview-helper">已上架服务会展示给用户，可随时编辑或下架</text>
+          <text class="overview-helper">新增、修改和重新上架需审核；下架立即生效</text>
         </view>
 
-        <view v-for="item in items" :key="item.id" class="service-card" :class="{ 'service-card-off': !item.is_active }">
+        <view v-for="item in items" :key="item.id || `revision-${item.revision_id}`" class="service-card" :class="{ 'service-card-off': !item.is_active }">
           <view class="service-head">
             <view class="service-title-block">
               <text class="service-title">{{ item.category }}</text>
               <view class="service-state" :class="{ 'service-state-off': !item.is_active }">
                 <view class="service-state-dot" />
-                <text>{{ item.is_active ? '已上架' : '已下架' }}</text>
+                <text>{{ item.review_status === 'pending' ? '审核中' : item.review_status === 'rejected' ? '审核未通过' : item.is_active ? '已上架' : '已下架' }}</text>
               </view>
             </view>
             <view class="price-row">
@@ -59,10 +59,11 @@
               <text class="service-meta-value">{{ durationLabel(item) }}</text>
             </view>
             <text class="service-description" :class="{ 'service-description-empty': !item.description }">{{ item.description || '未填写服务说明' }}</text>
+            <text v-if="item.review_status === 'rejected'" class="review-reason">{{ item.review_rejection_reason }}</text>
           </view>
           <view class="service-actions">
-            <button class="service-action service-edit dz-tappable" hover-class="dz-pressed" @tap="openEditor(item)">编辑服务</button>
-            <button v-if="item.is_active" class="service-action service-disable dz-tappable" hover-class="dz-pressed" @tap="disable(item)">下架</button>
+            <button class="service-action service-edit dz-tappable" hover-class="dz-pressed" :disabled="item.review_status === 'pending'" @tap="openEditor(item)">{{ item.review_status === 'pending' ? '等待审核' : item.review_status === 'rejected' && !item.id ? '修改重提' : '编辑服务' }}</button>
+            <button v-if="item.is_active && item.id" class="service-action service-disable dz-tappable" hover-class="dz-pressed" @tap="disable(item)">下架</button>
           </view>
         </view>
       </template>
@@ -87,6 +88,7 @@
         <view class="sheet-field">
           <text class="sheet-field-label">价格（元）</text>
           <input v-model="form.price" class="sheet-input" type="digit" placeholder="请输入价格" placeholder-class="input-placeholder" />
+          <text v-if="priceRange" class="price-limit">允许范围 ¥{{ money(priceRange.minimum) }}–{{ money(priceRange.maximum) }}</text>
         </view>
         <view class="sheet-field">
           <text class="sheet-field-label">预计时长（分钟）</text>
@@ -96,7 +98,7 @@
           <text class="sheet-field-label">服务说明</text>
           <textarea v-model="form.description" class="sheet-textarea" maxlength="500" placeholder="说明服务内容和注意事项" placeholder-class="input-placeholder" />
         </view>
-        <button class="save dz-tappable" :class="{ 'save-disabled': saving || !canSave }" hover-class="dz-pressed" @tap="save">{{ saving ? '保存中…' : '保存服务' }}</button>
+        <button class="save dz-tappable" :class="{ 'save-disabled': saving || !canSave }" hover-class="dz-pressed" @tap="save">{{ saving ? '提交中…' : '提交服务审核' }}</button>
       </view>
     </DzBottomSheet>
   </view>
@@ -135,10 +137,19 @@ const form = reactive({
 })
 
 const categoryName = computed(() => categories.value.find((item) => item.id === form.category_id)?.name || '')
+const priceRange = computed(() => {
+  const category = categories.value.find(item => item.id === form.category_id)
+  if (!category) return null
+  return form.billing_type === 'hourly'
+    ? { minimum: category.hourly_min_price_amount, maximum: category.hourly_max_price_amount }
+    : { minimum: category.per_session_min_price_amount, maximum: category.per_session_max_price_amount }
+})
 const submitBlocker = computed(() => {
   if (saving.value) return ''
   if (!(form.category_id > 0)) return '请先选择服务分类'
   if (!(Number(form.price) > 0)) return '请输入有效的价格'
+  const priceAmount = Math.round(Number(form.price) * 100)
+  if (priceRange.value && (priceAmount < priceRange.value.minimum || priceAmount > priceRange.value.maximum)) return `价格需在¥${money(priceRange.value.minimum)}–¥${money(priceRange.value.maximum)}之间`
   if (Number(form.duration) < 30) return '预计时长至少 30 分钟'
   return ''
 })
@@ -170,7 +181,7 @@ async function load() {
 function openEditor(item?: ProviderManagedService) {
   Object.assign(form, item
     ? {
-        id: item.id,
+        id: item.id || 0,
         category_id: item.category_id,
         billing_type: item.billing_type,
         price: String(item.price_amount / 100),
@@ -213,7 +224,7 @@ async function save() {
     else await createMyProviderService(data)
     editing.value = false
     await load()
-    uni.showToast({ title: '保存成功', icon: 'success' })
+    uni.showToast({ title: '已提交审核', icon: 'success' })
   } catch (reason) {
     uni.showToast({ title: getErrorMessage(reason, '保存失败'), icon: 'none' })
   } finally {
@@ -222,12 +233,14 @@ async function save() {
 }
 
 function disable(item: ProviderManagedService) {
+  if (!item.id) return
+  const serviceId = item.id
   uni.showModal({
     title: '下架服务',
     content: `确定下架“${item.category}”吗？`,
     success: async (result) => {
       if (!result.confirm) return
-      try { await disableMyProviderService(item.id); await load() } catch (reason) { uni.showToast({ title: getErrorMessage(reason, '下架失败'), icon: 'none' }) }
+      try { await disableMyProviderService(serviceId); await load() } catch (reason) { uni.showToast({ title: getErrorMessage(reason, '下架失败'), icon: 'none' }) }
     },
   })
 }
@@ -239,6 +252,7 @@ onLoad(() => { if (guardCurrentPage()) load() })
 @use '../../styles/tokens.scss' as *;
 
 .services-page{min-height:100vh;background:linear-gradient(180deg,#edfafa 0,#f5f9f9 360rpx,#f1f5f5 100%);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-synthesis:none;line-break:strict}
+.review-reason,.price-limit{display:block;margin-top:10rpx;color:#bf4a3d;font-size:21rpx;line-height:1.45}.price-limit{color:$dz-text-tertiary;text-align:right}
 .hero{background:rgba(247,252,252,.94)}
 .nav{position:sticky;z-index:30;top:0;display:flex;height:100rpx;align-items:center;justify-content:space-between}
 .nav-back{display:flex;width:88rpx;height:80rpx;align-items:center;justify-content:flex-start;margin:0;padding:0;border:0;background:transparent;font-size:54rpx;line-height:1}

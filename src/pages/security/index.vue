@@ -28,6 +28,11 @@
         <h2 class="section-title">账号信息</h2>
         <section class="setting-card">
           <view class="setting-row static-row">
+            <view class="row-icon"><image src="/static/icons/security.svg" mode="aspectFit" /></view>
+            <view class="row-copy"><strong class="strong-text">达人信用分</strong><text>平台当前记录的信用分</text></view>
+            <view class="row-value"><strong>{{ security?.provider_credit_score ?? '—' }}</strong><text>分</text></view>
+          </view>
+          <view class="setting-row static-row">
             <view class="row-icon"><image src="/static/icons/phone.svg" mode="aspectFit" /></view>
             <view class="row-copy"><strong class="strong-text">登录手机号</strong><text>用于登录和身份核验</text></view>
             <view class="row-value"><strong>{{ security?.phone_masked }}</strong><text>已绑定</text></view>

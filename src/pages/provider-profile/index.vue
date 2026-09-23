@@ -13,22 +13,33 @@
       <template v-else-if="data">
         <section class="profile-lead">
           <view><text>公开展示资料</text><strong class="strong-text">让用户更快了解你</strong></view>
-          <text>生活照、个人介绍和服务范围将展示在达人主页。</text>
+          <text>照片、视频、个人介绍和服务范围将展示在达人主页。</text>
         </section>
 
         <section v-if="data.review_status === 'pending'" class="review-notice">资料已提交审核，审核期间用户端继续展示原资料。</section>
         <section v-else-if="data.review_status === 'rejected'" class="review-notice rejected">审核未通过：{{ data.review_rejection_reason }}</section>
 
-        <section class="photo-panel">
-          <image v-if="preview" :src="preview" mode="aspectFill" />
-          <view v-else class="photo-empty"><b>＋</b><text>生活照</text></view>
-          <view class="photo-copy">
-            <view><strong class="strong-text">生活照</strong><text>公开展示</text></view>
-            <text>建议使用清晰自然的半身或全身照</text>
+        <section class="gallery-panel">
+          <view class="panel-heading"><strong class="strong-text">照片与视频</strong><text>{{ media.length }}/9</text></view>
+          <text class="gallery-tip">第一张照片作为列表封面，左右调整展示顺序。最多9个素材，其中视频最多3个；照片≤8MB，MP4/MOV视频≤50MB。</text>
+          <view class="gallery-grid">
+            <view v-for="(item, index) in media" :key="item.id" class="gallery-item">
+              <image v-if="item.type === 'image'" :src="item.url" mode="aspectFill" @tap="previewPhoto(item.url)" />
+              <video v-else :id="`profile-video-${item.id}`" :src="item.url" :autoplay="false" object-fit="contain" @play="pauseVideos(item.id)" />
+              <text class="media-label">{{ index === 0 ? '列表封面' : item.type === 'video' ? '视频' : '照片' }}</text>
+              <view class="media-actions">
+                <button :disabled="mediaLocked || index === 0" aria-label="前移" @tap="moveMedia(index, -1)">←</button>
+                <button :disabled="mediaLocked || index === media.length - 1" aria-label="后移" @tap="moveMedia(index, 1)">→</button>
+                <button :disabled="mediaLocked" @tap="removeMedia(index)">移除</button>
+              </view>
+            </view>
           </view>
-          <button class="photo-action dz-tappable" hover-class="dz-pressed" :disabled="uploading" @tap="choosePhoto">
-            {{ preview ? '更换' : '上传' }}
-          </button>
+          <view class="gallery-buttons">
+            <button :disabled="mediaLocked || media.length >= 9" @tap="choosePhoto">＋ 添加照片</button>
+            <button :disabled="mediaLocked || media.length >= 9 || videoCount >= 3" @tap="chooseVideo">＋ 添加视频</button>
+          </view>
+          <text v-if="uploading" class="gallery-tip">上传中，请稍候…</text>
+          <text v-if="saveAttempted && !media.length" class="field-error">请至少上传一张本人生活照作为封面</text>
         </section>
 
         <section class="form-panel">
@@ -63,12 +74,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, shallowRef } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { computed, reactive, ref } from 'vue'
+import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
 
 import NetworkState from '@/components/NetworkState.vue'
-import { getProviderProfile, saveProviderProfile, uploadProviderLifestylePhoto } from '@/services/providers'
-import type { ProviderProfileData } from '@/types/api'
+import { getProviderProfile, saveProviderProfile, uploadProviderLifestylePhoto, uploadProviderVideo } from '@/services/providers'
+import type { ProviderMedia, ProviderProfileData } from '@/types/api'
 import { getErrorMessage } from '@/utils/formatters'
 
 const cities = [
@@ -81,10 +92,10 @@ const saving = ref(false)
 const uploading = ref(false)
 const saveAttempted = ref(false)
 const error = ref('')
-const preview = ref('')
-const filePath = ref('')
-const file = shallowRef<unknown>()
+const media = ref<ProviderMedia[]>([])
 const data = ref<ProviderProfileData | null>(null)
+const mediaLocked = computed(() => uploading.value || saving.value || data.value?.review_status === 'pending')
+const videoCount = computed(() => media.value.filter(item => item.type === 'video').length)
 const form = reactive({
   display_name: '', bio: '', lifestyle_photo_id: null as string | null, service_city_code: '130400',
   service_city_name: '邯郸市', max_service_radius_km: 10,
@@ -92,6 +103,7 @@ const form = reactive({
 
 function back() { uni.navigateBack() }
 function apply(value: ProviderProfileData) {
+  pauseVideos()
   data.value = value
   Object.assign(form, {
     display_name: value.display_name,
@@ -101,7 +113,8 @@ function apply(value: ProviderProfileData) {
     service_city_name: value.service_city_name || '邯郸市',
     max_service_radius_km: value.max_service_radius_km,
   })
-  preview.value = value.lifestyle_photo_url || ''
+  media.value = value.media?.length ? value.media.map(item => ({ ...item })) : value.lifestyle_photo_id && value.lifestyle_photo_url
+    ? [{ id: value.lifestyle_photo_id, type: 'image', url: value.lifestyle_photo_url }] : []
 }
 async function load() {
   loading.value = true
@@ -114,34 +127,78 @@ function chooseCity(event: { detail: { value: string } }) {
 }
 function changeRadius(event: { detail: { value: number } }) { form.max_service_radius_km = Number(event.detail.value) }
 function choosePhoto() {
+  if (mediaLocked.value || media.value.length >= 9) return
+  uploading.value = true
   uni.chooseImage({
-    count: 1,
+    count: 9 - media.value.length,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
-    success: ({ tempFilePaths, tempFiles }) => {
-      const selected = Array.isArray(tempFiles) ? tempFiles[0] : tempFiles
-      if (selected?.size && selected.size > 8 * 1024 * 1024) return uni.showToast({ title: '生活照不能超过8MB', icon: 'none' })
-      filePath.value = tempFilePaths[0]
-      file.value = selected
-      preview.value = tempFilePaths[0]
+    success: async ({ tempFilePaths, tempFiles }) => {
+      try {
+        for (let index = 0; index < tempFilePaths.length && media.value.length < 9; index++) {
+          const selected = Array.isArray(tempFiles) ? tempFiles[index] : tempFiles
+          if (selected?.size && selected.size > 8 * 1024 * 1024) throw new Error('生活照不能超过8MB，已上传的照片会保留')
+          const uploaded = await uploadProviderLifestylePhoto(tempFilePaths[index], selected)
+          media.value.push({ ...uploaded.data, type: 'image' })
+        }
+      } catch (reason) { uni.showToast({ title: getErrorMessage(reason, '照片上传失败'), icon: 'none' }) }
+      finally { uploading.value = false }
     },
+    fail: (reason) => { uploading.value = false; if (!reason.errMsg.includes('cancel')) uni.showToast({ title: '无法选择照片，请重试', icon: 'none' }) },
   })
 }
+function chooseVideo() {
+  if (mediaLocked.value || media.value.length >= 9 || videoCount.value >= 3) return
+  if (!media.value.length) return uni.showToast({ title: '请先添加一张照片作为封面', icon: 'none' })
+  uploading.value = true
+  uni.chooseVideo({
+    sourceType: ['album', 'camera'], compressed: true,
+    success: async (selected) => {
+      try {
+        if (selected.size > 50 * 1024 * 1024) throw new Error('视频不能超过50MB')
+        const uploaded = await uploadProviderVideo(selected.tempFilePath, (selected as unknown as { tempFile?: unknown }).tempFile)
+        media.value.push({ ...uploaded.data, type: 'video' })
+      } catch (reason) { uni.showToast({ title: getErrorMessage(reason, '视频上传失败'), icon: 'none' }) }
+      finally { uploading.value = false }
+    },
+    fail: (reason) => { uploading.value = false; if (!reason.errMsg.includes('cancel')) uni.showToast({ title: '无法选择视频，请重试', icon: 'none' }) },
+  })
+}
+function moveMedia(index: number, offset: number) {
+  if (mediaLocked.value) return
+  const target = index + offset
+  if (target < 0 || target >= media.value.length) return
+  const next = [...media.value]
+  const moving = next[index]
+  next[index] = next[target]
+  next[target] = moving
+  if (next[0].type !== 'image') return uni.showToast({ title: '第一项必须是照片', icon: 'none' })
+  media.value = next
+}
+function removeMedia(index: number) {
+  if (mediaLocked.value) return
+  pauseVideos()
+  const next = media.value.filter((_, position) => position !== index)
+  if (next.length && next[0].type === 'video') {
+    const cover = next.findIndex(item => item.type === 'image')
+    if (cover < 0) return uni.showToast({ title: '有视频时至少保留一张封面照片', icon: 'none' })
+    next.unshift(...next.splice(cover, 1))
+  }
+  media.value = next
+}
+function previewPhoto(url: string) { uni.previewImage({ current: url, urls: media.value.filter(item => item.type === 'image').map(item => item.url) }) }
+function pauseVideos(exceptId?: string) {
+  media.value.filter(item => item.type === 'video' && item.id !== exceptId).forEach(item => uni.createVideoContext(`profile-video-${item.id}`).pause())
+}
 async function save() {
+  if (mediaLocked.value) return
   saveAttempted.value = true
   if (form.display_name.trim().length < 2) return uni.showToast({ title: '达人名称至少2个字', icon: 'none' })
   if (form.bio.trim().length < 10) return uni.showToast({ title: '达人简介至少10个字', icon: 'none' })
+  if (!media.value.length || media.value[0].type !== 'image') return uni.showToast({ title: '请上传一张封面照片', icon: 'none' })
   saving.value = true
   try {
-    if (filePath.value) {
-      uploading.value = true
-      const uploaded = await uploadProviderLifestylePhoto(filePath.value, file.value)
-      form.lifestyle_photo_id = uploaded.data.id
-      uploading.value = false
-    }
-    apply((await saveProviderProfile({ ...form, display_name: form.display_name.trim(), bio: form.bio.trim() })).data)
-    filePath.value = ''
-    file.value = undefined
+    apply((await saveProviderProfile({ ...form, lifestyle_photo_id: media.value[0].id, media_ids: media.value.map(item => item.id), display_name: form.display_name.trim(), bio: form.bio.trim() })).data)
     uni.showToast({ title: '资料已提交审核', icon: 'success' })
   } catch (reason) {
     uni.showToast({ title: getErrorMessage(reason), icon: 'none' })
@@ -152,19 +209,24 @@ async function save() {
 }
 
 onLoad(load)
+onHide(() => pauseVideos())
+onUnload(() => pauseVideos())
 </script>
 
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
 
+.gallery-panel{padding:24rpx;border:1rpx solid $dz-border;border-radius:28rpx;background:#fff}
+.gallery-tip{display:block;margin:14rpx 0;color:$dz-text-secondary;font-size:22rpx;line-height:1.6}
+.gallery-grid{display:flex;flex-wrap:wrap;gap:20rpx}.gallery-item{position:relative;width:calc(50% - 10rpx);overflow:hidden;border-radius:18rpx;background:#f2f7f7}.gallery-item>image,.gallery-item>video{display:block;width:100%;height:250rpx}.media-label{display:block;padding:8rpx 12rpx;color:$dz-brand-deep;font-size:21rpx}.media-actions,.gallery-buttons{display:flex;gap:8rpx;padding:8rpx}.media-actions button,.gallery-buttons button{flex:1;margin:0;padding:0 6rpx;font-size:22rpx;color:$dz-brand-deep;background:$dz-brand-soft}.media-actions button[disabled],.gallery-buttons button[disabled]{color:$dz-text-tertiary;background:#f3f4f4}.gallery-buttons{margin-top:14rpx;gap:16rpx}
+
 .profile-edit-page{padding-bottom:calc(132rpx + env(safe-area-inset-bottom));background:linear-gradient(180deg,#edfafa 0,#f5f9f9 350rpx,#f2f6f6 100%)}
 .page-nav{position:sticky;z-index:30;top:0;display:flex;height:100rpx;align-items:center;justify-content:space-between;background:rgba(247,252,252,.94)}
 .nav-back,.nav-space{width:88rpx;height:80rpx;flex:0 0 88rpx}.nav-back{margin:0;padding:0;border:0;background:transparent;font-size:54rpx;line-height:76rpx;text-align:left}.page-nav>.strong-text{font-size:34rpx}.nav-space{display:block}
-.nav-back::after,.photo-action::after,.save::after{display:none}
+.nav-back::after,.save::after{display:none}
 main{padding-top:12rpx}
 .profile-lead{display:flex;gap:12rpx;padding:22rpx 4rpx 26rpx;flex-direction:column}.profile-lead>view{display:flex;align-items:baseline;justify-content:space-between}.profile-lead>view>text{color:$dz-brand-deep;font-size:21rpx;font-weight:700;letter-spacing:.04em}.profile-lead .strong-text{font-size:34rpx}.profile-lead>text{max-width:620rpx;color:$dz-text-secondary;font-size:24rpx;line-height:1.6}
-.photo-panel,.form-panel,.settings-panel{border:1rpx solid rgba(220,232,233,.9);border-radius:28rpx;background:rgba(255,255,255,.96);box-shadow:$dz-shadow-soft}
-.photo-panel{display:flex;min-height:176rpx;align-items:center;padding:24rpx}.photo-panel>image,.photo-empty{display:flex;width:128rpx;height:128rpx;flex:0 0 128rpx;align-items:center;justify-content:center;border-radius:24rpx;background:$dz-brand-pale}.photo-empty{gap:4rpx;color:$dz-brand;flex-direction:column}.photo-empty b{font-size:36rpx;line-height:1}.photo-empty text{font-size:20rpx}.photo-copy{display:flex;min-width:0;gap:10rpx;margin-left:22rpx;flex:1;flex-direction:column}.photo-copy>view{display:flex;align-items:center;gap:12rpx}.photo-copy .strong-text{font-size:28rpx}.photo-copy>view>text{padding:5rpx 11rpx;border-radius:14rpx;color:$dz-brand-deep;background:$dz-brand-soft;font-size:18rpx;font-weight:650}.photo-copy>text{color:$dz-text-secondary;font-size:22rpx;line-height:1.5}.photo-action{height:68rpx;flex:none;margin:0 0 0 12rpx;padding:0 23rpx;border:1rpx solid #b8dddd;border-radius:21rpx;color:$dz-brand-deep;background:#fff;font-size:23rpx;font-weight:650;line-height:68rpx}
+.form-panel,.settings-panel{border:1rpx solid rgba(220,232,233,.9);border-radius:28rpx;background:rgba(255,255,255,.96);box-shadow:$dz-shadow-soft}
 .form-panel,.settings-panel{margin-top:20rpx;padding:26rpx}.panel-heading{display:flex;align-items:flex-start;justify-content:space-between}.panel-heading .strong-text,.setting-row .strong-text{font-size:27rpx}.panel-heading>text{color:$dz-text-tertiary;font-size:21rpx}.form-panel textarea{width:100%;height:168rpx;margin-top:18rpx;padding:20rpx;border:1rpx solid $dz-border;border-radius:20rpx;background:#f8fbfb;font-size:25rpx;line-height:1.65}.count{display:block;margin-top:10rpx;color:$dz-text-tertiary;font-size:21rpx;text-align:right}
 .review-notice{margin-bottom:20rpx;padding:22rpx 24rpx;border:1rpx solid #9bdedc;border-radius:20rpx;color:$dz-brand-deep;background:#effcfc;font-size:23rpx;line-height:1.55}.review-notice.rejected{border-color:#f2c3bd;color:#b43a2f;background:#fff4f2}.name-input{width:100%;margin-top:18rpx;padding:20rpx;border:1rpx solid $dz-border;border-radius:20rpx;background:#f8fbfb;font-size:25rpx;box-sizing:border-box}
 .settings-panel{padding:0 26rpx}.setting-row{display:flex;min-height:126rpx;align-items:center;justify-content:space-between;border-bottom:1rpx solid $dz-border}.setting-row>view{display:flex;gap:7rpx;flex-direction:column}.setting-row>view>text,.radius-row .panel-heading view>text{color:$dz-text-secondary;font-size:21rpx;line-height:1.45}.setting-row picker{flex:none;margin-left:18rpx;color:$dz-text-primary;font-size:25rpx;font-weight:650}.setting-row picker b{margin-left:5rpx;color:$dz-text-tertiary;font-size:31rpx;font-weight:400}

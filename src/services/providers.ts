@@ -43,6 +43,11 @@ export const uploadProviderLifestylePhoto = (filePath: string, file?: unknown) =
     '/media/provider-lifestyle-photos/', filePath, 'file', file,
   )
 
+export const uploadProviderVideo = (filePath: string, file?: unknown) =>
+  uploadFile<DataResponse<{ id: string; url: string }>>(
+    '/media/provider-videos/', filePath, 'file', file, 180000,
+  )
+
 export const startProviderOnline = (location: ProviderLocationPayload) =>
   request<DataResponse<ProviderOnlineSession>>('/providers/me/online/start/', {
     method: 'POST', data: location as unknown as Record<string, unknown>,

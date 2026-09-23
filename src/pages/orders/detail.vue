@@ -342,7 +342,7 @@ async function runUpdate(label: string, task: () => Promise<{ data: ProviderMana
 }
 async function acceptOrder() {
   if (!order.value) return
-  const confirmed = await confirmAction('确认接受订单', `接受后请于 ${timeRange(order.value.starts_at, order.value.ends_at)} 按时提供服务。`)
+  const confirmed = await confirmAction('确认接受订单', `必须由账号实名认证本人接单并提供服务，禁止代接、转单或由他人替代。确认由本人于 ${timeRange(order.value.starts_at, order.value.ends_at)} 按时提供服务吗？`)
   if (confirmed) await runUpdate('接单中…', () => acceptManagedProviderOrder(orderNo.value))
 }
 async function departOrder() {
@@ -354,6 +354,7 @@ async function uploadEvidence() {
   busy.value = true
   busyLabel.value = '选择照片…'
   try {
+    if (!await confirmAction('上传包含本人的到场照片', '开始服务前必须上传到场照片。照片须清晰包含实名认证本人及到场环境，请勿使用他人照片或仅拍摄场地。')) return
     const selected = await chooseEvidencePhoto()
     busyLabel.value = '定位中…'
     const location = await getCurrentLocation()
@@ -369,7 +370,7 @@ async function uploadEvidence() {
   }
 }
 async function startOrder() {
-  const confirmed = await confirmAction('开始服务', '请确认已与用户会合。开始后订单将进入服务中。')
+  const confirmed = await confirmAction('开始服务', '请确认本人已与用户会合，且已上传清晰包含本人的到场照片。开始后订单将进入服务中。')
   if (confirmed) await runUpdate('开始中…', () => startManagedProviderOrder(orderNo.value))
 }
 async function completeOrder() {

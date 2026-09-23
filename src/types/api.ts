@@ -16,6 +16,7 @@ export interface AuthSession {
 }
 
 export interface AccountSecurity {
+  provider_credit_score: number | null
   phone_masked: string
   password_set: boolean
   account_status: 'active' | 'restricted' | 'suspended' | 'closed'
@@ -41,6 +42,8 @@ export interface ProviderUpcomingOrder {
 }
 
 export interface ProviderWorkbench {
+  rating: string
+  credit_score: number
   nickname: string
   avatar_url: string | null
   is_accepting_orders: boolean
@@ -92,7 +95,10 @@ export interface ProviderIdentity {
   identity_rejection_reason: string
 }
 
+export interface ProviderMedia { id: string; type: 'image' | 'video'; url: string }
+
 export interface ProviderProfileData {
+  media: ProviderMedia[]
   display_name: string
   bio: string
   lifestyle_photo_id: string | null

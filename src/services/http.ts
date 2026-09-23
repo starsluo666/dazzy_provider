@@ -116,7 +116,7 @@ export function request<T>(path: string, options: RequestOptions = {}, retried =
   })
 }
 
-export function uploadFile<T>(path: string, filePath: string, name = 'file', file?: unknown): Promise<T> {
+export function uploadFile<T>(path: string, filePath: string, name = 'file', file?: unknown, timeout = 30000): Promise<T> {
   function performUpload(retried = false): Promise<T> {
     return new Promise((resolve, reject) => {
       uni.uploadFile({
@@ -129,7 +129,7 @@ export function uploadFile<T>(path: string, filePath: string, name = 'file', fil
           : import.meta.env.DEV && import.meta.env.VITE_DEMO_USER_PUBLIC_ID
             ? { 'X-Dazzy-Demo-User': import.meta.env.VITE_DEMO_USER_PUBLIC_ID }
             : {},
-        timeout: 30000,
+        timeout,
         success: (response) => {
           let body: unknown
           try { body = typeof response.data === 'string' ? JSON.parse(response.data) : response.data } catch { body = null }

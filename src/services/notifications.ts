@@ -10,12 +10,14 @@ import { request } from './http'
 
 export function getNotifications(options: {
   category?: NotificationCategory
+  isRead?: boolean
   page?: number
   pageSize?: number
 } = {}) {
   return request<NotificationListResponse>('/notifications/', {
     query: {
       category: options.category,
+      is_read: options.isRead === undefined ? undefined : String(options.isRead),
       page: options.page || 1,
       page_size: options.pageSize || 20,
     },

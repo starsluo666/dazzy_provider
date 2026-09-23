@@ -22,6 +22,10 @@
       </view>
     </scroll-view>
 
+    <nav class="status-tabs dz-container" aria-label="阅读状态">
+      <button v-for="tab in statusTabs" :key="tab.value" :class="{ active: activeStatus === tab.value }" @tap="selectStatus(tab.value)">{{ tab.label }}</button>
+    </nav>
+
     <main class="dz-container message-content">
       <NetworkState v-if="loading" message="正在加载消息…" />
       <NetworkState v-else-if="error" :message="error" action-text="重新加载" @action="load(true)" />
@@ -66,6 +70,13 @@ import { businessClock, businessDateKey, shiftBusinessDateKey } from '@/utils/bu
 import { getErrorMessage } from '@/utils/formatters'
 
 type CategoryFilter = '' | NotificationCategory
+type ReadFilter = 'all' | 'unread' | 'read'
+
+const statusTabs: Array<{ label: string; value: ReadFilter }> = [
+  { label: '全部消息', value: 'all' },
+  { label: '未读', value: 'unread' },
+  { label: '已读', value: 'read' },
+]
 
 const categoryTabs: Array<{ label: string; value: CategoryFilter }> = [
   { label: '全部', value: '' },
@@ -83,15 +94,18 @@ const emptySummary = (): NotificationSummary => ({
 const items = ref<UserNotification[]>([])
 const summary = ref(emptySummary())
 const activeCategory = ref<CategoryFilter>('')
+const activeStatus = ref<ReadFilter>('all')
 const page = ref(1)
 const total = ref(0)
 const loading = ref(true)
 const loadingMore = ref(false)
 const markingAll = ref(false)
 const error = ref('')
-const currentUnread = computed(() => activeCategory.value
+let loadVersion = 0
+let openingNotification = false
+const currentUnread = computed(() => activeStatus.value === 'read' ? 0 : (activeCategory.value
   ? summary.value.category_unread[activeCategory.value]
-  : summary.value.unread)
+  : summary.value.unread))
 const activeCategoryLabel = computed(() => categoryTabs.find(tab => tab.value === activeCategory.value)?.label || '')
 
 function goBack() { uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/workbench/index' }) }) }
@@ -105,24 +119,33 @@ async function load(reset = false) {
     page.value = 1
     loading.value = true
     error.value = ''
-  } else if (loadingMore.value || items.value.length >= total.value) return
+    items.value = []
+    total.value = 0
+  } else if (loading.value || loadingMore.value || markingAll.value || openingNotification || items.value.length >= total.value) return
+  const version = ++loadVersion
+  const requestedPage = page.value
   loadingMore.value = !reset
   try {
     const response = await getNotifications({
       category: activeCategory.value || undefined,
-      page: page.value,
+      isRead: activeStatus.value === 'all' ? undefined : activeStatus.value === 'read',
+      page: requestedPage,
       pageSize: 20,
     })
+    if (version !== loadVersion) return
     items.value = reset ? response.data.items : [...items.value, ...response.data.items]
     summary.value = response.data.summary
     total.value = response.data.pagination.total
-    if (items.value.length < total.value) page.value += 1
+    if (items.value.length < total.value) page.value = requestedPage + 1
   } catch (reason) {
+    if (version !== loadVersion) return
     if (reset) error.value = getErrorMessage(reason, '消息加载失败')
     else uni.showToast({ title: getErrorMessage(reason, '加载更多失败'), icon: 'none' })
   } finally {
-    loading.value = false
-    loadingMore.value = false
+    if (version === loadVersion) {
+      loading.value = false
+      loadingMore.value = false
+    }
   }
 }
 function selectCategory(category: CategoryFilter) {
@@ -132,36 +155,39 @@ function selectCategory(category: CategoryFilter) {
   total.value = 0
   void load(true)
 }
+function selectStatus(readStatus: ReadFilter) {
+  if (activeStatus.value === readStatus) return
+  activeStatus.value = readStatus
+  items.value = []
+  total.value = 0
+  void load(true)
+}
 async function markAll() {
-  if (!currentUnread.value || markingAll.value) return
+  if (!currentUnread.value || markingAll.value || openingNotification) return
   markingAll.value = true
   try {
     const category = activeCategory.value || undefined
     await markAllNotificationsRead(category)
-    items.value = items.value.map(item => category && item.category !== category
-      ? item
-      : { ...item, is_read: true, read_at: new Date().toISOString() })
-    if (category) summary.value.category_unread[category] = 0
-    else Object.keys(summary.value.category_unread).forEach((key) => { summary.value.category_unread[key as NotificationCategory] = 0 })
-    summary.value.unread = Object.values(summary.value.category_unread).reduce((sum, count) => sum + count, 0)
+    await load(true)
   } catch (reason) {
     uni.showToast({ title: getErrorMessage(reason, '操作失败'), icon: 'none' })
   } finally { markingAll.value = false }
 }
 async function openNotification(item: UserNotification) {
-  if (!item.is_read) {
-    try {
-      const response = await markNotificationRead(item.public_id)
-      const index = items.value.findIndex(candidate => candidate.public_id === item.public_id)
-      if (index >= 0) items.value[index] = response.data
-      summary.value.unread = Math.max(0, summary.value.unread - 1)
-      summary.value.category_unread[item.category] = Math.max(0, summary.value.category_unread[item.category] - 1)
-    } catch (reason) {
-      uni.showToast({ title: getErrorMessage(reason, '标记已读失败'), icon: 'none' })
-      return
+  if (openingNotification || markingAll.value) return
+  openingNotification = true
+  try {
+    if (!item.is_read) {
+      await markNotificationRead(item.public_id)
+      // 阅读状态变化会改变分页偏移，重新加载可避免未读列表漏项。
+      await load(true)
     }
+    if (item.action_url.startsWith('/pages/')) uni.navigateTo({ url: item.action_url })
+  } catch (reason) {
+    uni.showToast({ title: getErrorMessage(reason, '标记已读失败'), icon: 'none' })
+  } finally {
+    openingNotification = false
   }
-  if (item.action_url.startsWith('/pages/')) uni.navigateTo({ url: item.action_url })
 }
 
 onShow(() => { if (guardCurrentPage()) void load(true) })
@@ -175,4 +201,5 @@ onReachBottom(() => { void load(false) })
 .category-tabs{background:rgba(255,255,255,.78);white-space:nowrap}.tab-row{display:flex;max-width:750px;margin:auto;padding:0 24rpx}.category-tabs button{position:relative;flex:1;height:76rpx;margin:0;padding:0 18rpx;border:0;color:$dz-text-secondary;background:transparent;font-size:22rpx}.category-tabs button.active{color:$dz-brand-deep;font-weight:700}.category-tabs button.active::before{position:absolute;right:24rpx;bottom:0;left:24rpx;height:5rpx;border-radius:5rpx;background:$dz-brand;content:''}.category-tabs button i{position:absolute;top:18rpx;right:17rpx;width:12rpx;height:12rpx;border:2rpx solid #fff;border-radius:50%;background:$dz-danger}
 .message-content{padding-top:22rpx;padding-bottom:40rpx}.message-list{overflow:hidden;border:1rpx solid $dz-border-material;border-radius:28rpx;background:$dz-surface-card;box-shadow:$dz-shadow-soft}.message-row{position:relative;display:flex;width:100%;min-height:170rpx;align-items:flex-start;margin:0;padding:25rpx 24rpx;border:0;border-bottom:1rpx solid $dz-border-subtle;background:$dz-surface-card;text-align:left}.message-row.unread{background:#f2fcfc}.message-icon{display:flex;flex:0 0 66rpx;width:66rpx;height:66rpx;align-items:center;justify-content:center;border-radius:20rpx;background:$dz-brand-soft}.message-icon image{width:42rpx;height:42rpx}.message-copy{display:flex;min-width:0;gap:8rpx;margin-left:18rpx;flex:1;flex-direction:column}.message-copy>view{display:flex;align-items:center;justify-content:space-between;gap:12rpx}.message-copy strong{font-size:24rpx}.message-copy time,.message-copy small{color:$dz-text-tertiary;font-size:18rpx}.message-copy>text{color:$dz-text-secondary;font-size:21rpx;line-height:1.55}.message-copy b{color:$dz-brand-deep;font-size:20rpx}.unread-dot{display:none;position:absolute;top:29rpx;right:16rpx;width:12rpx;height:12rpx;border-radius:50%;background:$dz-danger}.unread .unread-dot{display:block}.load-state{display:block;height:70rpx;color:$dz-text-tertiary;font-size:19rpx;line-height:70rpx;text-align:center}
 .empty-state{display:flex;min-height:650rpx;align-items:center;justify-content:center;text-align:center;flex-direction:column}.bubble{display:flex;width:126rpx;height:96rpx;align-items:center;justify-content:center;gap:10rpx;border:4rpx solid #8edddb;border-radius:45rpx 45rpx 45rpx 15rpx}.bubble i{width:11rpx;height:11rpx;border-radius:50%;background:$dz-brand}.empty-state .strong-text{margin-top:30rpx;font-size:28rpx}.empty-state>text{margin-top:12rpx;color:$dz-text-secondary;font-size:20rpx}
+.status-tabs{display:flex;gap:12rpx;padding-top:18rpx}.status-tabs button{height:52rpx;margin:0;padding:0 24rpx;border:1rpx solid $dz-border-subtle;border-radius:26rpx;color:$dz-text-secondary;background:$dz-surface-card;font-size:19rpx;line-height:50rpx}.status-tabs button::after{display:none}.status-tabs button.active{border-color:$dz-brand;color:$dz-brand-deep;background:$dz-brand-soft;font-weight:700}
 </style>

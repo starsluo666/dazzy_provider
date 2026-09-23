@@ -33,13 +33,15 @@
 
         <section class="form-panel">
           <view class="panel-heading"><strong class="strong-text">达人名称</strong><text>公开展示 · 无需唯一</text></view>
-          <input v-model="form.display_name" class="name-input" maxlength="30" placeholder="请输入公开展示的达人名称" />
+          <input v-model="form.display_name" class="name-input" :class="{ invalid: saveAttempted && form.display_name.trim().length < 2 }" maxlength="30" placeholder="请输入公开展示的达人名称" />
+          <text v-if="saveAttempted && form.display_name.trim().length < 2" class="field-error">达人名称至少填写2个字</text>
         </section>
 
         <section class="form-panel">
           <view class="panel-heading"><strong class="strong-text">个人介绍</strong><text>至少 10 字</text></view>
-          <textarea v-model="form.bio" maxlength="500" placeholder="介绍你的特长、性格和服务体验" />
+          <textarea v-model="form.bio" :class="{ invalid: saveAttempted && form.bio.trim().length < 10 }" maxlength="500" placeholder="介绍你的特长、性格和服务体验" />
           <text class="count">{{ form.bio.length }}/500</text>
+          <text v-if="saveAttempted && form.bio.trim().length < 10" class="field-error">个人介绍至少填写10个字，还差 {{ 10 - form.bio.trim().length }} 字</text>
         </section>
 
         <section class="settings-panel">
@@ -77,6 +79,7 @@ const cities = [
 const loading = ref(true)
 const saving = ref(false)
 const uploading = ref(false)
+const saveAttempted = ref(false)
 const error = ref('')
 const preview = ref('')
 const filePath = ref('')
@@ -125,6 +128,7 @@ function choosePhoto() {
   })
 }
 async function save() {
+  saveAttempted.value = true
   if (form.display_name.trim().length < 2) return uni.showToast({ title: '达人名称至少2个字', icon: 'none' })
   if (form.bio.trim().length < 10) return uni.showToast({ title: '达人简介至少10个字', icon: 'none' })
   saving.value = true
@@ -165,7 +169,7 @@ main{padding-top:12rpx}
 .review-notice{margin-bottom:20rpx;padding:22rpx 24rpx;border:1rpx solid #9bdedc;border-radius:20rpx;color:$dz-brand-deep;background:#effcfc;font-size:23rpx;line-height:1.55}.review-notice.rejected{border-color:#f2c3bd;color:#b43a2f;background:#fff4f2}.name-input{width:100%;margin-top:18rpx;padding:20rpx;border:1rpx solid $dz-border;border-radius:20rpx;background:#f8fbfb;font-size:25rpx;box-sizing:border-box}
 .settings-panel{padding:0 26rpx}.setting-row{display:flex;min-height:126rpx;align-items:center;justify-content:space-between;border-bottom:1rpx solid $dz-border}.setting-row>view{display:flex;gap:7rpx;flex-direction:column}.setting-row>view>text,.radius-row .panel-heading view>text{color:$dz-text-secondary;font-size:21rpx;line-height:1.45}.setting-row picker{flex:none;margin-left:18rpx;color:$dz-text-primary;font-size:25rpx;font-weight:650}.setting-row picker b{margin-left:5rpx;color:$dz-text-tertiary;font-size:31rpx;font-weight:400}
 .radius-row{padding:25rpx 0 22rpx}.radius-row .panel-heading>view{display:flex;gap:7rpx;flex-direction:column}.radius-row .panel-heading>b{color:$dz-brand-deep;font-size:28rpx;font-weight:750;font-variant-numeric:tabular-nums}.radius-row slider{margin:26rpx 0 8rpx}.range-label{display:flex;justify-content:space-between;color:$dz-text-tertiary;font-size:19rpx}
-.save-bar{position:fixed;z-index:40;right:0;bottom:0;left:0;max-width:750px;margin:auto;padding:18rpx 30rpx calc(18rpx + env(safe-area-inset-bottom));background:rgba(250,253,253,.96);box-shadow:0 -14rpx 44rpx rgba(24,55,58,.1)}.save{width:100%;height:88rpx;margin:0;border:0;border-radius:24rpx;color:#fff;background:$dz-brand;box-shadow:$dz-shadow-control;font-size:27rpx;font-weight:700;line-height:88rpx}
+.save-bar{position:fixed;z-index:40;right:0;bottom:0;left:0;max-width:750px;margin:auto;padding:18rpx 30rpx calc(18rpx + env(safe-area-inset-bottom));background:rgba(250,253,253,.96);box-shadow:0 -14rpx 44rpx rgba(24,55,58,.1)}.save{width:100%;height:88rpx;margin:0;border:0;border-radius:24rpx;color:#fff;background:$dz-brand;box-shadow:$dz-shadow-control;font-size:27rpx;font-weight:700;line-height:88rpx}.name-input.invalid,.form-panel textarea.invalid{border-color:$dz-danger;background:$dz-danger-soft}.field-error{display:block;margin-top:9rpx;color:$dz-danger;font-size:20rpx}
 /* #ifdef H5 */
 .page-nav,.save-bar{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
 /* #endif */

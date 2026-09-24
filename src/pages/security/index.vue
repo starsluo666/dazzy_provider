@@ -32,11 +32,11 @@
             <view class="row-copy"><strong class="strong-text">达人信用分</strong><text>平台当前记录的信用分</text></view>
             <view class="row-value"><strong>{{ security?.provider_credit_score ?? '—' }}</strong><text>分</text></view>
           </view>
-          <view class="setting-row static-row">
+          <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="修改登录手机号" @tap="openPhoneChange">
             <view class="row-icon"><image src="/static/icons/phone.svg" mode="aspectFit" /></view>
             <view class="row-copy"><strong class="strong-text">登录手机号</strong><text>用于登录和身份核验</text></view>
-            <view class="row-value"><strong>{{ security?.phone_masked }}</strong><text>已绑定</text></view>
-          </view>
+            <view class="row-value"><strong>{{ security?.phone_masked }}</strong><b>›</b></view>
+          </button>
         </section>
 
         <h2 class="section-title">安全设置</h2>
@@ -121,6 +121,7 @@ const panelDescription = computed(() => panel.value === 'password' ? '修改后�
 
 function warn(title: string) { uni.showToast({ title, icon: 'none' }) }
 function goBack() { uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/profile/index' }) }) }
+function openPhoneChange() { uni.navigateTo({ url: '/pages/security/phone' }) }
 function openPanel(value: Exclude<SecurityPanel, ''>) { clearForm(); panel.value = value }
 function closePanel(force = false) { if (!saving.value || force) { panel.value = ''; clearForm() } }
 function clearForm() {

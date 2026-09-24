@@ -10,6 +10,10 @@
         <label class="auth-field"><input v-model="password" :password="!visible" maxlength="20" placeholder="请输入密码" /><view class="auth-field-action" @tap="visible=!visible">{{ visible ? '隐藏' : '显示' }}</view></label>
         <view class="auth-inline-link">仅审核通过的达人账号可登录</view>
         <button class="auth-primary" :disabled="submitting" @tap="submit">{{ submitting ? '登录中…' : '登录' }}</button>
+        <!-- #ifdef MP-WEIXIN -->
+        <view class="wechat-divider"><text>或</text></view>
+        <button class="wechat-login" open-type="getPhoneNumber" :disabled="wechatSubmitting" @getphonenumber="wechatLogin">{{ wechatSubmitting ? '微信登录中…' : '微信一键登录' }}</button>
+        <!-- #endif -->
       </view>
       <view class="auth-agreement" @tap="agreed=!agreed"><view class="agreement-check" :class="{ checked:agreed }">{{ agreed ? '✓' : '' }}</view><view class="agreement-copy">我已阅读并同意 <text>《用户协议》</text> 和 <text>《隐私政策》</text></view></view>
     </main>
@@ -19,12 +23,22 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { loginWithPassword } from '@/services/auth'
+import { loginWithPassword, loginWithWechatMiniProgram } from '@/services/auth'
 import { returnAfterAuthentication } from '@/services/session'
 
-const phone=ref(''),password=ref(''),visible=ref(false),agreed=ref(false),submitting=ref(false),redirect=ref('')
+const phone=ref(''),password=ref(''),visible=ref(false),agreed=ref(false),submitting=ref(false),wechatSubmitting=ref(false),redirect=ref('')
 onLoad(query=>{redirect.value=typeof query?.redirect==='string'?decodeURIComponent(query.redirect):''})
 function warn(title:string){uni.showToast({title,icon:'none'})}
+function getWechatLoginCode():Promise<string>{return new Promise((resolve,reject)=>{uni.login({provider:'weixin',success:(result)=>result.code?resolve(result.code):reject(new Error('微信登录凭证获取失败')),fail:()=>reject(new Error('微信登录凭证获取失败'))})})}
+async function wechatLogin(event:{detail?:{code?:string;errMsg?:string}}){
+  if(!agreed.value)return warn('请先阅读并同意用户协议和隐私政策')
+  const phoneCode=event.detail?.code
+  if(!phoneCode)return warn(event.detail?.errMsg?.includes('deny')?'需要授权手机号才能首次登录':'微信手机号授权失败')
+  wechatSubmitting.value=true
+  try{await loginWithWechatMiniProgram(await getWechatLoginCode(),phoneCode);uni.showToast({title:'登录成功',icon:'success'});setTimeout(()=>returnAfterAuthentication(redirect.value),300)}
+  catch(reason){warn((reason as Error).message||'微信登录失败')}
+  finally{wechatSubmitting.value=false}
+}
 async function submit(){
   if(!/^1[3-9]\d{9}$/.test(phone.value))return warn('请输入正确的手机号')
   if(password.value.length<8)return warn('请输入 8–20 位密码')
@@ -39,4 +53,5 @@ async function submit(){
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
 .auth-page{min-height:100vh;min-height:100dvh;padding-bottom:calc(36rpx + env(safe-area-inset-bottom));background:#fff;box-sizing:border-box}.auth-shell{width:100%;max-width:430px;margin:0 auto;padding:34rpx 46rpx 0;box-sizing:border-box}.auth-brand{display:flex;height:92rpx;justify-content:center}.auth-brand image{width:300rpx;height:92rpx}.auth-heading{margin-top:42rpx;text-align:center}.auth-heading h1{display:block;margin:0;color:#111b20;font-size:48rpx;font-weight:700;line-height:1.25}.auth-heading p{display:block;margin-top:14rpx;color:$dz-text-secondary;font-size:25rpx;line-height:1.5}.auth-form{margin-top:52rpx}.auth-mode-title{display:flex;align-items:center;gap:18rpx;margin-bottom:32rpx;color:#121c21;font-size:28rpx;font-weight:650}.auth-mode-title view{height:1rpx;flex:1;background:#dfe6e8}.auth-field{display:flex;min-height:98rpx;align-items:center;margin-bottom:24rpx;padding:0 26rpx;border:2rpx solid #e0e6e8;border-radius:18rpx;background:#fff;box-sizing:border-box}.auth-field:focus-within{border-color:rgba(24,199,198,.74);box-shadow:0 0 0 5rpx rgba(24,199,198,.08)}.auth-field input{min-width:0;height:94rpx;flex:1;color:$dz-text-primary;font-size:27rpx}.auth-field-action{display:flex;min-width:72rpx;height:76rpx;align-items:center;justify-content:center;margin-right:-18rpx;padding:0 12rpx;color:$dz-text-secondary;font-size:25rpx;white-space:nowrap}.auth-inline-link{display:flex;min-height:58rpx;align-items:center;justify-content:flex-end;margin-top:-8rpx;color:$dz-text-tertiary;font-size:21rpx}.auth-primary{display:flex;width:100%;height:102rpx;align-items:center;justify-content:center;margin-top:28rpx;border-radius:18rpx;color:#fff;background:$dz-gradient-brand;font-size:31rpx;font-weight:650;box-shadow:0 12rpx 28rpx rgba(8,181,194,.18)}.auth-primary[disabled]{opacity:.58}.auth-agreement{display:flex;align-items:flex-start;justify-content:center;margin-top:54rpx;color:$dz-text-secondary;font-size:21rpx;line-height:1.65}.agreement-check{display:flex;width:30rpx;height:30rpx;flex:0 0 auto;align-items:center;justify-content:center;margin:2rpx 12rpx 0 0;border:2rpx solid #cbd5d8;border-radius:50%;color:#fff;font-size:20rpx;box-sizing:border-box}.agreement-check.checked{border-color:$dz-brand-primary;background:$dz-brand-primary}.agreement-copy{text-align:left}.agreement-copy text{color:$dz-brand-deep}
+.wechat-divider{display:flex;align-items:center;gap:18rpx;margin:28rpx 0 20rpx;color:$dz-text-tertiary;font-size:21rpx}.wechat-divider::before,.wechat-divider::after{height:1rpx;flex:1;background:#e1e9ea;content:''}.wechat-login{display:flex;width:100%;height:96rpx;align-items:center;justify-content:center;margin:0;border:1rpx solid #d8e7e7;border-radius:18rpx;color:#15875b;background:#f5fffa;font-size:28rpx;font-weight:650}.wechat-login[disabled]{opacity:.58}
 </style>

@@ -13,13 +13,22 @@ export interface AuthSession {
   access: string
   refresh: string
   user: CurrentUser
+  closure_cancelled?: boolean
+}
+
+export interface AccountClosureSubmission {
+  closed: false
+  status: 'pending'
+  requested_at: string
+  execute_after: string
+  working_days: 5
 }
 
 export interface AccountSecurity {
   provider_credit_score: number | null
   phone_masked: string
   password_set: boolean
-  account_status: 'active' | 'restricted' | 'suspended' | 'closed'
+  account_status: 'active' | 'restricted' | 'suspended' | 'closure_pending' | 'closed'
   account_status_label: string
 }
 

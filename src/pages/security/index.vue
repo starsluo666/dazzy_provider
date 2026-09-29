@@ -52,7 +52,7 @@
         <section class="setting-card danger-card">
           <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="注销账号" @tap="openPanel('close')">
             <view class="row-icon danger-icon"><image src="/static/icons/account-close.svg" mode="aspectFit" /></view>
-            <view class="row-copy"><strong class="strong-text danger-copy">账号注销</strong><text>永久停用当前账号并退出登录</text></view>
+            <view class="row-copy"><strong class="strong-text danger-copy">账号注销</strong><text>申请后等待 5 个工作日完成注销</text></view>
             <view class="row-value"><strong class="danger-copy">注销</strong><b>›</b></view>
           </button>
         </section>
@@ -83,9 +83,9 @@
               <view class="password-field"><input v-model="confirmation" :password="!confirmationVisible" maxlength="20" placeholder="请再次输入新密码" /><button @tap.stop="confirmationVisible = !confirmationVisible">{{ confirmationVisible ? '隐藏' : '显示' }}</button></view>
             </label>
           </template>
-          <view v-else class="session-note"><strong class="strong-text">注销后无法恢复</strong><text>账号将被永久停用，所有设备都会退出登录；如仍有进行中的订单，请先完成处理。</text></view>
+          <view v-else class="session-note"><strong class="strong-text">5 个工作日后完成注销</strong><text>申请后所有设备退出登录，等待期内成功登录会撤销申请。注销完成后无法恢复；有待核实交易或投诉时将暂停处理。</text></view>
           <button class="submit-button" :class="{ danger: panel === 'close' }" :disabled="saving" @tap="submit">
-            {{ saving ? '正在处理…' : panel === 'password' ? '确认修改' : '确认注销账号' }}
+            {{ saving ? '正在处理…' : panel === 'password' ? '确认修改' : '提交注销申请' }}
           </button>
         </view>
       </section>
@@ -100,6 +100,7 @@ import { computed, ref } from 'vue'
 import NetworkState from '@/components/NetworkState.vue'
 import { changePassword, closeAccount, getAccountSecurity } from '@/services/auth'
 import { clearSession, guardCurrentPage } from '@/services/session'
+import { formatBusinessDateTime } from '@/utils/formatters'
 import type { AccountSecurity } from '@/types/api'
 
 type SecurityPanel = 'password' | 'close' | ''
@@ -115,9 +116,10 @@ const currentVisible = ref(false)
 const newVisible = ref(false)
 const confirmationVisible = ref(false)
 const saving = ref(false)
+const confirmingClose = ref(false)
 
 const panelTitle = computed(() => panel.value === 'password' ? '修改登录密码' : '注销账号')
-const panelDescription = computed(() => panel.value === 'password' ? '修改后，其他设备上的旧登录状态将失效。' : '验证当前密码后永久停用当前账号。')
+const panelDescription = computed(() => panel.value === 'password' ? '修改后，其他设备上的旧登录状态将失效。' : '验证当前密码后提交申请，等待期按国内节假日和调休计算。')
 
 function warn(title: string) { uni.showToast({ title, icon: 'none' }) }
 function goBack() { uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/profile/index' }) }) }
@@ -145,23 +147,38 @@ async function load() {
   }
 }
 async function submit() {
+  if (saving.value || confirmingClose.value || !panel.value || loading.value || error.value || !security.value) return
   if (currentPassword.value.length < 8) return warn('请输入正确的当前密码')
   if (panel.value === 'password') {
     if (newPassword.value.length < 8 || newPassword.value.length > 20) return warn('新密码长度须为 8–20 位')
     if (newPassword.value === currentPassword.value) return warn('新密码不能与当前密码相同')
     if (newPassword.value !== confirmation.value) return warn('两次输入的新密码不一致')
   }
-  if (panel.value === 'close' && !await confirmAccountClosure()) return
+  if (panel.value === 'close') {
+    confirmingClose.value = true
+    const confirmed = await confirmAccountClosure()
+    confirmingClose.value = false
+    if (!confirmed || panel.value !== 'close') return
+  }
   saving.value = true
   try {
     if (panel.value === 'password') {
       await changePassword(currentPassword.value, newPassword.value)
       uni.showToast({ title: '密码修改成功', icon: 'success' })
     } else if (panel.value === 'close') {
-      await closeAccount(currentPassword.value)
+      const { data } = await closeAccount(currentPassword.value)
+      if (data?.status !== 'pending' || data.closed !== false || data.working_days !== 5 || !Number.isFinite(Date.parse(data.execute_after))) {
+        throw new Error('注销申请状态异常，请重新登录或联系客服确认')
+      }
       clearSession()
       closePanel(true)
-      uni.reLaunch({ url: '/pages/auth/login' })
+      uni.showModal({
+        title: '注销申请已提交',
+        content: `预计于 ${formatBusinessDateTime(data.execute_after)}（北京时间）完成注销。等待期内成功登录将撤销申请；如有未结业务，处理会暂停。`,
+        showCancel: false,
+        confirmText: '我知道了',
+        success: () => uni.reLaunch({ url: '/pages/auth/login?closurePending=1' }),
+      })
       return
     }
     closePanel(true)
@@ -177,8 +194,8 @@ function confirmAccountClosure(): Promise<boolean> {
   return new Promise((resolve) => {
     uni.showModal({
       title: '确认注销账号？',
-      content: '注销后账号将无法登录且不可恢复，请确认已处理完所有订单。',
-      confirmText: '确认注销',
+      content: '申请后进入 5 个工作日等待期并退出登录，期间成功登录可撤销申请。注销完成后无法恢复，请确认已处理完所有订单。',
+      confirmText: '提交申请',
       confirmColor: '#e5484d',
       cancelText: '暂不注销',
       success: ({ confirm }) => resolve(confirm),

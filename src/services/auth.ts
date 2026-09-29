@@ -1,4 +1,4 @@
-import type { AccountSecurity, AuthSession, DataResponse } from '@/types/api'
+import type { AccountClosureSubmission, AccountSecurity, AuthSession, DataResponse } from '@/types/api'
 import { request } from './http'
 import { clearSession, getRefreshToken, saveSession } from './session'
 
@@ -59,7 +59,7 @@ export async function logoutOtherSessions(currentPassword: string) {
 }
 
 export function closeAccount(currentPassword: string) {
-  return request<DataResponse<{ closed: boolean }>>('/auth/account/close/', {
+  return request<DataResponse<AccountClosureSubmission>>('/auth/account/close/', {
     method: 'POST',
     data: { current_password: currentPassword },
   })

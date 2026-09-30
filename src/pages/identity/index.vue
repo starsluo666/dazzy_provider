@@ -74,7 +74,7 @@
             class="material-row dz-tappable"
             :class="{ 'material-row-locked': locked }"
             hover-class="dz-pressed"
-            :disabled="locked || uploading"
+            :disabled="locked || uploading[item.key]"
             @tap="choosePhoto(item.key)"
           >
             <view class="photo-frame">
@@ -91,7 +91,7 @@
               <text class="photo-help">{{ locked ? '已通过核验' : item.help }}</text>
             </view>
             <view v-if="!locked" class="material-action">
-              <text>{{ uploading ? '上传中' : item.id ? '更换' : '上传' }}</text>
+              <text>{{ uploading[item.key] ? '上传中' : item.id ? '更换' : '上传' }}</text>
               <text class="action-chevron">›</text>
             </view>
           </button>
@@ -106,8 +106,8 @@
 
     <view v-if="data && !loading && !error" class="identity-footer">
       <view v-if="!locked" class="footer-actions">
-        <button class="secondary-button dz-tappable" hover-class="dz-pressed" :disabled="saving" @tap="save()">保存资料</button>
-        <button class="primary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || uploading" @tap="submit">{{ saving ? '处理中…' : '提交认证' }}</button>
+        <button class="secondary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || uploadingAny" @tap="save()">保存资料</button>
+        <button class="primary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || uploadingAny" @tap="submit">{{ saving ? '处理中…' : '提交认证' }}</button>
       </view>
       <view v-else class="locked-note"><text>{{ lockedFooterCopy }}</text></view>
     </view>
@@ -119,11 +119,18 @@ import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import NetworkState from '@/components/NetworkState.vue'
 import { getProviderIdentity, saveProviderIdentity, submitProviderIdentity, uploadProviderIdentityPhoto } from '@/services/providers'
+import { guardCurrentPage } from '@/services/session'
 import type { ProviderIdentity } from '@/types/api'
 import { getErrorMessage } from '@/utils/formatters'
 
 type PhotoKey = 'identity_front_photo' | 'identity_back_photo' | 'identity_face_photo'
-const loading = ref(true); const saving = ref(false); const uploading = ref(false); const error = ref('')
+const loading = ref(true); const saving = ref(false); const error = ref('')
+const uploading = reactive<Record<PhotoKey, boolean>>({
+  identity_front_photo: false,
+  identity_back_photo: false,
+  identity_face_photo: false,
+})
+const uploadingAny = computed(() => Object.values(uploading).some(Boolean))
 const data = ref<ProviderIdentity | null>(null)
 const form = reactive({ identity_real_name: '', id_number: '', identity_front_photo_id: null as string | null, identity_back_photo_id: null as string | null, identity_face_photo_id: null as string | null })
 const previews = reactive({ identity_front_photo: '', identity_back_photo: '', identity_face_photo: '' })
@@ -164,8 +171,34 @@ async function load(){ loading.value=true; error.value=''; try{ apply((await get
 function payload(){ return { identity_real_name: form.identity_real_name.trim(), ...(form.id_number ? { id_number: form.id_number.trim().toUpperCase() } : {}), identity_front_photo_id: form.identity_front_photo_id, identity_back_photo_id: form.identity_back_photo_id, identity_face_photo_id: form.identity_face_photo_id } }
 async function save(silent=false){ if(saving.value)return false; saving.value=true; try{ apply((await saveProviderIdentity(payload())).data); if(!silent)uni.showToast({title:'资料已保存',icon:'success'}); return true }catch(reason){ uni.showToast({title:getErrorMessage(reason),icon:'none'}); return false }finally{ saving.value=false } }
 async function submit(){ if(!form.identity_real_name.trim())return uni.showToast({title:'请填写真实姓名',icon:'none'}); if(!form.id_number && !data.value?.identity_number_masked)return uni.showToast({title:'请填写身份证号码',icon:'none'}); if(!form.identity_front_photo_id||!form.identity_back_photo_id||!form.identity_face_photo_id)return uni.showToast({title:'请上传全部认证材料',icon:'none'}); if(!await save(true))return; try{ apply((await submitProviderIdentity()).data); uni.showToast({title:'已提交审核',icon:'success'}) }catch(reason){ uni.showToast({title:getErrorMessage(reason),icon:'none'}) } }
-function choosePhoto(key: PhotoKey){ uni.chooseImage({count:1,sizeType:['compressed'],sourceType:['album','camera'],success:async({tempFilePaths,tempFiles})=>{ const file=Array.isArray(tempFiles)?tempFiles[0]:tempFiles; if(file?.size&&file.size>8*1024*1024)return uni.showToast({title:'图片不能超过8MB',icon:'none'}); uploading.value=true; try{ const result=await uploadProviderIdentityPhoto(tempFilePaths[0],file); const idKey=`${key}_id` as keyof typeof form; form[idKey]=result.data.id; previews[key]=result.data.url }catch(reason){ uni.showToast({title:getErrorMessage(reason),icon:'none'}) }finally{ uploading.value=false } }}) }
-onLoad(load)
+function choosePhoto(key: PhotoKey) {
+  if (locked.value || uploading[key]) return
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: async ({ tempFilePaths, tempFiles }) => {
+      if (uploading[key] || !tempFilePaths[0]) return
+      const file = Array.isArray(tempFiles) ? tempFiles[0] : tempFiles
+      if (file?.size && file.size > 8 * 1024 * 1024) {
+        uni.showToast({ title: '图片不能超过8MB', icon: 'none' })
+        return
+      }
+      uploading[key] = true
+      try {
+        const result = await uploadProviderIdentityPhoto(tempFilePaths[0], file)
+        const idKey = `${key}_id` as keyof typeof form
+        form[idKey] = result.data.id
+        previews[key] = result.data.url
+      } catch (reason) {
+        uni.showToast({ title: getErrorMessage(reason), icon: 'none' })
+      } finally {
+        uploading[key] = false
+      }
+    },
+  })
+}
+onLoad(() => { if (guardCurrentPage()) void load() })
 </script>
 
 <style lang="scss" scoped>

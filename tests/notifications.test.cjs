@@ -25,7 +25,7 @@ function response(items, total = items.length, all = items) {
 }
 
 // Execute the real page script with mocked HTTP and platform hooks.
-function mount(api) {
+function mount(api, platform = {}) {
   const file = path.resolve(__dirname, '../src/pages/messages/index.vue')
   const script = fs.readFileSync(file, 'utf8').match(/<script setup lang="ts">([\s\S]*?)<\/script>/)[1]
   const output = ts.transpileModule(script + '\nglobalThis.pageUnderTest = { load, markAll, openNotification, items, total, loading, error, activeStatus, activeCategory };', {
@@ -40,7 +40,7 @@ function mount(api) {
       if (name === '@/utils/formatters') return { getErrorMessage: (_reason, fallback) => fallback }
       return {}
     },
-    uni: { showToast() {}, navigateTo() {} },
+    uni: { showToast: platform.showToast || (() => {}), navigateTo: platform.navigateTo || (() => {}) },
   }
   vm.runInNewContext(output, context, { filename: file })
   return context.pageUnderTest
@@ -126,12 +126,34 @@ async function markAllRespectsFilterChangesWhileSaving() {
   assert.equal(page.total.value, 1)
 }
 
+async function providerMessagesOnlyOpenProviderPages() {
+  const routes = [], toasts = []
+  const page = mount({}, {
+    navigateTo: ({ url }) => routes.push(url),
+    showToast: ({ title }) => toasts.push(title),
+  })
+  const application = {
+    ...notification('application', 'system'), is_read: true,
+    event_type: 'provider_application_result', action_url: '/pages/providers/apply',
+  }
+  await page.openNotification({ ...application, title: '达人申请审核通过' })
+  assert.deepEqual(routes, ['/pages/identity/index'])
+
+  await page.openNotification({ ...application, title: '达人申请审核未通过' })
+  assert.deepEqual(routes, ['/pages/identity/index'])
+  assert.deepEqual(toasts, ['请在用户端查看这条消息'])
+
+  await page.openNotification({ ...application, action_url: '/pages/orders/index' })
+  assert.deepEqual(routes, ['/pages/identity/index', '/pages/orders/index'])
+}
+
 async function main() {
   for (const test of [
     staleResponsesCannotOverwriteCurrentFilter,
     staleFailureCannotEndCurrentLoading,
     readThenPaginateDoesNotSkipMessages,
     markAllRespectsFilterChangesWhileSaving,
+    providerMessagesOnlyOpenProviderPages,
   ]) {
     await test()
     console.log('PASS ' + test.name)

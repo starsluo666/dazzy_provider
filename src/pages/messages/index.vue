@@ -107,6 +107,23 @@ const currentUnread = computed(() => activeStatus.value === 'read' ? 0 : (active
   ? summary.value.category_unread[activeCategory.value]
   : summary.value.unread))
 const activeCategoryLabel = computed(() => categoryTabs.find(tab => tab.value === activeCategory.value)?.label || '')
+const providerPages = new Set([
+  '/pages/workbench/index', '/pages/messages/index', '/pages/profile/index',
+  '/pages/identity/index', '/pages/provider-profile/index', '/pages/services/index',
+  '/pages/schedule/index', '/pages/orders/index', '/pages/orders/detail',
+  '/pages/income/index', '/pages/security/index', '/pages/security/phone',
+])
+
+function notificationDestination(item: UserNotification): string {
+  const path = item.action_url.split('?')[0]
+  // 申请通知由用户端产生；审核通过后，达人端应继续实名认证。
+  if (path === '/pages/providers/apply') {
+    return item.event_type === 'provider_application_result' && item.title === '达人申请审核通过'
+      ? '/pages/identity/index' : ''
+  }
+  if (!providerPages.has(path)) return ''
+  return item.action_url
+}
 
 function goBack() { uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/workbench/index' }) }) }
 function formatTime(value: string) {
@@ -182,7 +199,17 @@ async function openNotification(item: UserNotification) {
       // 阅读状态变化会改变分页偏移，重新加载可避免未读列表漏项。
       await load(true)
     }
-    if (item.action_url.startsWith('/pages/')) uni.navigateTo({ url: item.action_url })
+    if (item.action_url) {
+      const destination = notificationDestination(item)
+      if (destination) {
+        uni.navigateTo({
+          url: destination,
+          fail: () => uni.showToast({ title: '页面暂时无法打开，请稍后重试', icon: 'none' }),
+        })
+      } else {
+        uni.showToast({ title: '请在用户端查看这条消息', icon: 'none' })
+      }
+    }
   } catch (reason) {
     uni.showToast({ title: getErrorMessage(reason, '标记已读失败'), icon: 'none' })
   } finally {

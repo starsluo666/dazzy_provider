@@ -24,12 +24,35 @@
         </header>
 
         <section v-if="!data.can_accept_orders" class="onboarding-card">
-          <view class="onboarding-head"><view><text>接单准备</text><strong class="strong-text">{{ data.onboarding_status === 'pending_review' ? '综合审核中' : data.onboarding_status === 'rejected' ? '审核未通过' : `还差 ${data.onboarding_blockers.length} 项` }}</strong></view><text>{{ onboardingProgress }}</text></view>
+          <view class="onboarding-head">
+            <view class="onboarding-title">
+              <text>接单准备</text>
+              <strong class="strong-text">{{ data.onboarding_status === 'pending_review' ? '综合审核中' : data.onboarding_status === 'rejected' ? '审核未通过' : '完成接单设置' }}</strong>
+            </view>
+            <view class="onboarding-progress">
+              <text v-if="data.onboarding_status === 'pending_review'">等待审核</text>
+              <text v-else-if="data.onboarding_status === 'rejected'">待修改</text>
+              <text v-else>已完成 {{ setupStepsCompleted }}/3</text>
+            </view>
+            <text class="onboarding-caption">{{ onboardingProgress }}</text>
+          </view>
           <text v-if="data.onboarding_status === 'rejected'" class="onboarding-reason">{{ data.onboarding_rejection_reason }}</text>
           <view class="onboarding-steps">
-            <button class="dz-tappable" :class="{done:data.identity_status==='verified'||data.identity_status==='pending'}" hover-class="dz-pressed" @tap="openIdentity"><i>{{data.identity_status==='verified'||data.identity_status==='pending'?'✓':'1'}}</i><view><strong>实名认证</strong><text>{{identityStepCopy}}</text></view><b>›</b></button>
-            <button class="dz-tappable" :class="{done:data.is_profile_complete||data.profile_review_status==='pending'}" hover-class="dz-pressed" @tap="openProviderProfile"><i>{{data.is_profile_complete||data.profile_review_status==='pending'?'✓':'2'}}</i><view><strong>完善达人资料</strong><text>{{ data.profile_review_status === 'pending' ? '资料已提交' : '生活照、简介和服务城市' }}</text></view><b>›</b></button>
-            <button class="dz-tappable" :class="{done:data.pending_service_revision_count>0||!data.onboarding_blockers.some(item=>item.includes('服务'))}" hover-class="dz-pressed" @tap="openServices"><i>{{data.pending_service_revision_count>0||!data.onboarding_blockers.some(item=>item.includes('服务'))?'✓':'3'}}</i><view><strong>配置服务</strong><text>{{ data.pending_service_revision_count > 0 ? '服务已提交' : '至少添加并启用一项服务' }}</text></view><b>›</b></button>
+            <view class="onboarding-step dz-tappable" :class="{ done: identityStepDone }" role="button" hover-class="dz-pressed" @tap="openIdentity">
+              <i>{{ identityStepDone ? '✓' : '1' }}</i>
+              <view class="onboarding-step-copy"><strong>实名认证</strong><text>{{ identityStepCopy }}</text></view>
+              <b aria-hidden="true">›</b>
+            </view>
+            <view class="onboarding-step dz-tappable" :class="{ done: profileStepDone }" role="button" hover-class="dz-pressed" @tap="openProviderProfile">
+              <i>{{ profileStepDone ? '✓' : '2' }}</i>
+              <view class="onboarding-step-copy"><strong>完善达人资料</strong><text>{{ data.profile_review_status === 'pending' ? '资料已提交' : '生活照、简介和服务城市' }}</text></view>
+              <b aria-hidden="true">›</b>
+            </view>
+            <view class="onboarding-step dz-tappable" :class="{ done: serviceStepDone }" role="button" hover-class="dz-pressed" @tap="openServices">
+              <i>{{ serviceStepDone ? '✓' : '3' }}</i>
+              <view class="onboarding-step-copy"><strong>配置服务</strong><text>{{ data.pending_service_revision_count > 0 ? '服务已提交' : '至少添加并启用一项服务' }}</text></view>
+              <b aria-hidden="true">›</b>
+            </view>
           </view>
         </section>
 
@@ -159,6 +182,10 @@ let observedOrderUnread: number | null = null
 let notificationTimer: ReturnType<typeof setInterval> | null = null
 
 const avatarUrl = computed(() => typeof data.value?.avatar_url === 'string' ? data.value.avatar_url : '')
+const identityStepDone = computed(() => data.value?.identity_status === 'verified' || data.value?.identity_status === 'pending')
+const profileStepDone = computed(() => Boolean(data.value?.is_profile_complete || data.value?.profile_review_status === 'pending'))
+const serviceStepDone = computed(() => Boolean(data.value && (data.value.pending_service_revision_count > 0 || !data.value.onboarding_blockers.some(item => item.includes('服务')))))
+const setupStepsCompleted = computed(() => Number(identityStepDone.value) + Number(profileStepDone.value) + Number(serviceStepDone.value))
 const onboardingProgress = computed(() => data.value?.onboarding_status === 'pending_review' ? '三项已自动提交' : data.value?.onboarding_status === 'rejected' ? '修改三项后自动重提' : '完成后自动提交开通审核')
 const identityStepCopy = computed(() => {
   if (data.value?.identity_status === 'pending') return '资料审核中'
@@ -499,8 +526,22 @@ onUnmounted(stopNotificationPolling)
 .identity-meta{color:#70868b;font-size:20rpx;line-height:1.3}
 
 .onboarding-card{margin:8rpx 0 20rpx;padding:24rpx;border:1rpx solid rgba(255,255,255,.92);border-radius:34rpx;background:rgba(255,255,255,.84);box-shadow:0 22rpx 48rpx rgba(31,79,84,.09),inset 0 1rpx 0 rgba(255,255,255,.92)}
-.onboarding-head strong{font-size:27rpx}
-.onboarding-steps button{min-height:86rpx;background:transparent}
+.onboarding-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5rpx 12rpx}
+.onboarding-title{display:flex;min-width:0;gap:5rpx;flex-direction:column}
+.onboarding-title>text{color:$dz-brand-deep;font-size:19rpx;font-weight:700;line-height:1.2;letter-spacing:.025em}
+.onboarding-title>strong{color:#142329;font-size:29rpx;line-height:1.2;letter-spacing:-.025em}
+.onboarding-progress{display:flex;min-height:42rpx;align-items:center;padding:0 13rpx;border:1rpx solid rgba(17,193,196,.13);border-radius:999rpx;color:$dz-brand-deep;background:rgba(221,248,247,.76);font-size:18rpx;font-weight:650;white-space:nowrap}
+.onboarding-caption{grid-column:1/-1;color:#718187;font-size:18rpx;line-height:1.4}
+.onboarding-reason{margin-top:13rpx;padding:14rpx 16rpx;border:1rpx solid rgba(226,104,77,.12);border-radius:17rpx;background:#fff5f2}
+.onboarding-steps{display:flex;margin-top:19rpx;gap:10rpx;flex-direction:column}
+.onboarding-step{display:grid;width:100%;min-height:88rpx;grid-template-columns:46rpx minmax(0,1fr) 34rpx;align-items:center;gap:14rpx;margin:0;padding:13rpx 14rpx;border:1rpx solid rgba(216,230,230,.88);border-radius:23rpx;background:#fff;text-align:left}
+.onboarding-step>i{display:flex;width:44rpx;height:44rpx;align-items:center;justify-content:center;border:1rpx solid rgba(133,151,155,.12);border-radius:15rpx;color:#63777c;background:#f0f4f4;font-size:19rpx;font-style:normal;font-weight:700}
+.onboarding-step.done>i{border-color:rgba(17,193,196,.08);color:#078c92;background:#dcf7f5}
+.onboarding-step-copy{display:flex;min-width:0;gap:4rpx;flex-direction:column}
+.onboarding-step-copy>strong{overflow:hidden;color:#1b2c31;font-size:22rpx;line-height:1.25;letter-spacing:-.01em;text-overflow:ellipsis;white-space:nowrap}
+.onboarding-step-copy>text{overflow:hidden;color:#718187;font-size:17rpx;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
+.onboarding-step>b{display:flex;width:32rpx;height:32rpx;align-items:center;justify-content:center;border-radius:50%;color:#829397;background:#f2f6f6;font-size:27rpx;font-weight:400;line-height:1}
+.onboarding-step:active{transform:scale(.985)}
 
 .online-hero{position:relative;overflow:hidden;margin-top:2rpx;padding:28rpx 28rpx 23rpx;border:1rpx solid rgba(255,255,255,.94);border-radius:38rpx;background:rgba(255,255,255,.82);box-shadow:0 22rpx 52rpx rgba(31,79,84,.105),inset 0 1rpx 0 rgba(255,255,255,.96)}
 .online-hero::after{position:absolute;top:-92rpx;right:-92rpx;width:250rpx;height:250rpx;border:38rpx solid rgba(17,193,196,.075);border-radius:50%;content:'';pointer-events:none}

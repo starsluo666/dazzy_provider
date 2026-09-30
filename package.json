@@ -10,6 +10,8 @@
     "test:business-time": "node tests/businessTime.test.cjs",
     "test:notifications": "node tests/notifications.test.cjs",
     "test:account-closure": "node tests/accountClosure.test.cjs",
+    "test:legal": "node tests/legal.test.cjs",
+    "test:security": "node tests/security.test.cjs",
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {

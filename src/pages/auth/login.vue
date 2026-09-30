@@ -16,7 +16,7 @@
         <button class="wechat-login" open-type="getPhoneNumber" :disabled="wechatSubmitting" @getphonenumber="wechatLogin">{{ wechatSubmitting ? '微信登录中…' : '微信一键登录' }}</button>
         <!-- #endif -->
       </view>
-      <view class="auth-agreement" @tap="agreed=!agreed"><view class="agreement-check" :class="{ checked:agreed }">{{ agreed ? '✓' : '' }}</view><view class="agreement-copy">我已阅读并同意 <text>《用户协议》</text> 和 <text>《隐私政策》</text></view></view>
+      <LegalConsent class="auth-agreement" v-model="agreed" :disabled="submitting || wechatSubmitting" @read="openLegalDocument" />
     </main>
   </view>
 </template>
@@ -26,6 +26,8 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { loginWithPassword, loginWithWechatMiniProgram } from '@/services/auth'
 import { returnAfterAuthentication } from '@/services/session'
+import LegalConsent from '@/components/LegalConsent.vue'
+import { openLegalDocument } from '@/content/legal'
 
 const phone=ref(''),password=ref(''),visible=ref(false),agreed=ref(false),submitting=ref(false),wechatSubmitting=ref(false),redirect=ref('')
 const closurePending=ref(false)

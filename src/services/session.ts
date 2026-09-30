@@ -32,7 +32,7 @@ export function isAuthenticated(): boolean {
   )
 }
 
-const publicRoutes = ['/pages/auth/login']
+const publicRoutes = ['/pages/auth/login', '/pages/legal/document']
 export function isProtectedRoute(url: string): boolean {
   const path = (url.startsWith('/') ? url : `/${url}`).split('?')[0]
   return !publicRoutes.includes(path)

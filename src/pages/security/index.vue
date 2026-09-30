@@ -16,11 +16,11 @@
         <section class="security-summary">
           <view class="summary-icon"><image src="/static/icons/security.svg" mode="aspectFit" /></view>
           <view class="summary-copy">
-            <view><strong class="strong-text">账号状态正常</strong><text>正常</text></view>
+            <view><strong class="strong-text">{{ security?.account_status === 'active' ? '账号状态正常' : '账号' + (security?.account_status_label || '状态待确认') }}</strong><text :class="{ 'status-warning': security?.account_status !== 'active' }">{{ security?.account_status_label || '待确认' }}</text></view>
             <p>手机号与登录密码用于保护账号，敏感操作需要再次验证身份。</p>
           </view>
           <view class="summary-status">
-            <view><text>账号状态</text><strong>{{ security?.account_status_label || '正常' }}</strong></view>
+            <view><text>账号状态</text><strong>{{ security?.account_status_label || '待确认' }}</strong></view>
             <view><text>登录密码</text><strong>{{ security?.password_set ? '已设置' : '未设置' }}</strong></view>
           </view>
         </section>
@@ -43,8 +43,8 @@
         <section class="setting-card">
           <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="修改登录密码" @tap="openPanel('password')">
             <view class="row-icon"><image src="/static/icons/password.svg" mode="aspectFit" /></view>
-            <view class="row-copy"><strong class="strong-text">登录密码</strong><text>定期更换密码可降低账号风险</text></view>
-            <view class="row-value"><strong>修改</strong><b>›</b></view>
+            <view class="row-copy"><strong class="strong-text">登录密码</strong><text>{{ needsInitialPassword ? '验证绑定手机号后设置登录密码' : '定期更换密码可降低账号风险' }}</text></view>
+            <view class="row-value"><strong>{{ needsInitialPassword ? '设置' : '修改' }}</strong><b>›</b></view>
           </button>
         </section>
 
@@ -57,6 +57,14 @@
           </button>
         </section>
 
+        <h2 class="section-title">协议与隐私</h2>
+        <section class="setting-card">
+          <button v-for="link in legalLinks" :key="link.kind" class="setting-row dz-tappable" hover-class="dz-pressed" @tap="openLegalDocument(link.kind)">
+            <view class="row-copy"><strong class="strong-text">{{ link.label }}</strong></view>
+            <view class="row-value"><b aria-hidden="true">›</b></view>
+          </button>
+        </section>
+
         <section class="security-tip">
           <strong class="strong-text">安全提醒</strong>
           <text>平台不会通过电话或聊天索要密码、短信验证码。请勿向他人提供账号或代收款信息。</text>
@@ -64,12 +72,16 @@
       </template>
     </main>
 
-    <view v-if="panel" class="sheet-mask" @tap.self="closePanel">
+    <view v-if="panel" class="sheet-mask" @tap.self="closePanel()">
       <section class="security-sheet" role="dialog" :aria-label="panelTitle">
         <i class="sheet-handle" />
-        <header><view><strong class="strong-text">{{ panelTitle }}</strong><text>{{ panelDescription }}</text></view><button aria-label="关闭" @tap="closePanel">×</button></header>
+        <header><view><strong class="strong-text">{{ panelTitle }}</strong><text>{{ panelDescription }}</text></view><button aria-label="关闭" @tap="closePanel()">×</button></header>
         <view class="sheet-form">
-          <label>
+          <label v-if="needsInitialPassword && panel === 'password'">
+            <text>验证手机号 {{ security?.phone_masked }}</text>
+            <view class="password-field"><input v-model="initialCode" type="number" maxlength="6" placeholder="输入 6 位验证码" /><button :disabled="sendingCode || codeSeconds > 0 || saving" @tap="sendInitialCode">{{ codeSeconds > 0 ? `${codeSeconds}s` : sendingCode ? '发送中…' : '获取验证码' }}</button></view>
+          </label>
+          <label v-else>
             <text>当前登录密码</text>
             <view class="password-field"><input v-model="currentPassword" :password="!currentVisible" maxlength="20" placeholder="请输入当前密码" /><button @tap.stop="currentVisible = !currentVisible">{{ currentVisible ? '隐藏' : '显示' }}</button></view>
           </label>
@@ -83,9 +95,10 @@
               <view class="password-field"><input v-model="confirmation" :password="!confirmationVisible" maxlength="20" placeholder="请再次输入新密码" /><button @tap.stop="confirmationVisible = !confirmationVisible">{{ confirmationVisible ? '隐藏' : '显示' }}</button></view>
             </label>
           </template>
-          <view v-else class="session-note"><strong class="strong-text">5 个工作日后完成注销</strong><text>申请后所有设备退出登录，等待期内成功登录会撤销申请。注销完成后无法恢复；有待核实交易或投诉时将暂停处理。</text></view>
-          <button class="submit-button" :class="{ danger: panel === 'close' }" :disabled="saving" @tap="submit">
-            {{ saving ? '正在处理…' : panel === 'password' ? '确认修改' : '提交注销申请' }}
+          <view v-else class="session-note"><strong class="strong-text">注销的是整个平台账号</strong><text>用户端和达人端将同时退出登录。申请后等待 5 个工作日；期间成功登录会撤销申请。完成后无法恢复，有未结交易、结算或投诉时会暂停处理。</text></view>
+          <LegalConsent v-if="panel === 'close'" v-model="closureAgreed" :documents="['closure']" :disabled="saving || confirmingClose" @read="readClosureAgreement" />
+          <button class="submit-button" :class="{ danger: panel === 'close' }" :disabled="saving || sendingCode || confirmingClose || (panel === 'close' && !closureAgreed)" @tap="submit">
+            {{ saving ? '正在处理…' : panel === 'password' ? needsInitialPassword ? '确认设置' : '确认修改' : '提交注销申请' }}
           </button>
         </view>
       </section>
@@ -94,11 +107,13 @@
 </template>
 
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { onHide, onShow } from '@dcloudio/uni-app'
+import { computed, onBeforeUnmount, ref } from 'vue'
 
 import NetworkState from '@/components/NetworkState.vue'
-import { changePassword, closeAccount, getAccountSecurity } from '@/services/auth'
+import LegalConsent from '@/components/LegalConsent.vue'
+import { legalLinks, legalDocumentUrl, openLegalDocument } from '@/content/legal'
+import { changePassword, closeAccount, getAccountSecurity, sendInitialPasswordCode, setInitialPassword } from '@/services/auth'
 import { clearSession, guardCurrentPage } from '@/services/session'
 import { formatBusinessDateTime } from '@/utils/formatters'
 import type { AccountSecurity } from '@/types/api'
@@ -117,15 +132,27 @@ const newVisible = ref(false)
 const confirmationVisible = ref(false)
 const saving = ref(false)
 const confirmingClose = ref(false)
+const initialCode = ref(''), closureAgreed = ref(false), sendingCode = ref(false), codeSeconds = ref(0)
+const needsInitialPassword = computed(() => security.value?.password_set === false)
+let resumeClosure = false, disposed = false, loadVersion = 0
+let codeTimer: ReturnType<typeof setInterval> | undefined
 
-const panelTitle = computed(() => panel.value === 'password' ? '修改登录密码' : '注销账号')
-const panelDescription = computed(() => panel.value === 'password' ? '修改后，其他设备上的旧登录状态将失效。' : '验证当前密码后提交申请，等待期按国内节假日和调休计算。')
+const panelTitle = computed(() => panel.value === 'password' ? needsInitialPassword.value ? '设置登录密码' : '修改登录密码' : '注销账号')
+const panelDescription = computed(() => panel.value === 'password' ? needsInitialPassword.value ? '验证绑定手机号后设置密码，无需旧密码。' : '修改后，其他设备上的旧登录状态将失效。' : '验证当前密码后提交整个平台账号的注销申请。')
 
 function warn(title: string) { uni.showToast({ title, icon: 'none' }) }
 function goBack() { uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/profile/index' }) }) }
 function openPhoneChange() { uni.navigateTo({ url: '/pages/security/phone' }) }
-function openPanel(value: Exclude<SecurityPanel, ''>) { clearForm(); panel.value = value }
-function closePanel(force = false) { if (!saving.value || force) { panel.value = ''; clearForm() } }
+function openPanel(value: Exclude<SecurityPanel, ''>) {
+  if (disposed || saving.value || sendingCode.value || confirmingClose.value || loading.value || error.value || !security.value) return
+  clearForm()
+  if (value === 'close' && needsInitialPassword.value) {
+    uni.showModal({ title: '请先设置登录密码', content: '你的账号尚未设置密码。请先验证绑定手机号并设置密码，再申请注销。', confirmText: '去设置', success: ({ confirm }) => { if (confirm && !disposed) openPanel('password') } })
+    return
+  }
+  panel.value = value
+}
+function closePanel(force = false) { if ((!saving.value && !sendingCode.value && !confirmingClose.value) || force) { panel.value = ''; clearForm() } }
 function clearForm() {
   currentPassword.value = ''
   newPassword.value = ''
@@ -133,22 +160,28 @@ function clearForm() {
   currentVisible.value = false
   newVisible.value = false
   confirmationVisible.value = false
+  initialCode.value = ''
+  closureAgreed.value = false
 }
 async function load() {
+  const version = ++loadVersion
   loading.value = true
   error.value = ''
   try {
     const securityResponse = await getAccountSecurity()
-    security.value = securityResponse.data
+    if (!disposed && version === loadVersion) security.value = securityResponse.data
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '账号设置加载失败'
+    if (!disposed && version === loadVersion) error.value = reason instanceof Error ? reason.message : '账号设置加载失败'
   } finally {
-    loading.value = false
+    if (!disposed && version === loadVersion) loading.value = false
   }
 }
 async function submit() {
-  if (saving.value || confirmingClose.value || !panel.value || loading.value || error.value || !security.value) return
-  if (currentPassword.value.length < 8) return warn('请输入正确的当前密码')
+  if (disposed || saving.value || sendingCode.value || confirmingClose.value || !panel.value || loading.value || error.value || !security.value) return
+  if (panel.value === 'close' && !closureAgreed.value) return warn('请先阅读并同意账号注销协议')
+  const settingInitial = needsInitialPassword.value && panel.value === 'password'
+  if (settingInitial) { if (!/^\d{6}$/.test(initialCode.value)) return warn('请输入 6 位短信验证码') }
+  else if (currentPassword.value.length < 8) return warn('请输入正确的当前密码')
   if (panel.value === 'password') {
     if (newPassword.value.length < 8 || newPassword.value.length > 20) return warn('新密码长度须为 8–20 位')
     if (newPassword.value === currentPassword.value) return warn('新密码不能与当前密码相同')
@@ -158,13 +191,14 @@ async function submit() {
     confirmingClose.value = true
     const confirmed = await confirmAccountClosure()
     confirmingClose.value = false
-    if (!confirmed || panel.value !== 'close') return
+    if (!confirmed || disposed || panel.value !== 'close' || !closureAgreed.value) return
   }
   saving.value = true
   try {
     if (panel.value === 'password') {
-      await changePassword(currentPassword.value, newPassword.value)
-      uni.showToast({ title: '密码修改成功', icon: 'success' })
+      if (settingInitial) await setInitialPassword(initialCode.value, newPassword.value)
+      else await changePassword(currentPassword.value, newPassword.value)
+      if (!disposed) uni.showToast({ title: settingInitial ? '密码设置成功' : '密码修改成功', icon: 'success' })
     } else if (panel.value === 'close') {
       const { data } = await closeAccount(currentPassword.value)
       if (data?.status !== 'pending' || data.closed !== false || data.working_days !== 5 || !Number.isFinite(Date.parse(data.execute_after))) {
@@ -172,7 +206,7 @@ async function submit() {
       }
       clearSession()
       closePanel(true)
-      uni.showModal({
+      if (!disposed) uni.showModal({
         title: '注销申请已提交',
         content: `预计于 ${formatBusinessDateTime(data.execute_after)}（北京时间）完成注销。等待期内成功登录将撤销申请；如有未结业务，处理会暂停。`,
         showCancel: false,
@@ -194,7 +228,7 @@ function confirmAccountClosure(): Promise<boolean> {
   return new Promise((resolve) => {
     uni.showModal({
       title: '确认注销账号？',
-      content: '申请后进入 5 个工作日等待期并退出登录，期间成功登录可撤销申请。注销完成后无法恢复，请确认已处理完所有订单。',
+      content: '这是整个平台账号的注销，用户端和达人端都会受到影响。等待期为 5 个工作日，期间成功登录可撤销申请。请确认已处理完所有订单和结算。',
       confirmText: '提交申请',
       confirmColor: '#e5484d',
       cancelText: '暂不注销',
@@ -204,11 +238,40 @@ function confirmAccountClosure(): Promise<boolean> {
   })
 }
 
-onShow(() => { if (guardCurrentPage()) load() })
+async function sendInitialCode() {
+  if (disposed || panel.value !== 'password' || !needsInitialPassword.value || loading.value || sendingCode.value || codeSeconds.value > 0 || saving.value) return
+  sendingCode.value = true
+  try {
+    const { data } = await sendInitialPasswordCode()
+    if (disposed || panel.value !== 'password') return
+    if (import.meta.env.DEV && data.debug_code) initialCode.value = data.debug_code
+    codeSeconds.value = data.retry_after
+    if (codeTimer) clearInterval(codeTimer)
+    codeTimer = setInterval(() => { codeSeconds.value = Math.max(0, codeSeconds.value - 1); if (!codeSeconds.value && codeTimer) clearInterval(codeTimer) }, 1000)
+    warn('验证码已发送至绑定手机号')
+  } catch (reason) { if (!disposed) warn(reason instanceof Error ? reason.message : '验证码发送失败') }
+  finally { sendingCode.value = false }
+}
+function readClosureAgreement() {
+  if (panel.value !== 'close' || saving.value || confirmingClose.value || disposed) return
+  resumeClosure = true
+  uni.navigateTo({ url: legalDocumentUrl('closure'), fail: () => { resumeClosure = false; warn('协议页面打开失败，请重试') } })
+}
+onHide(() => { loadVersion += 1; closePanel(true) })
+onShow(async () => {
+  if (!guardCurrentPage()) return
+  const reopen = resumeClosure
+  resumeClosure = false
+  await load()
+  if (reopen && !disposed) openPanel('close')
+})
+onBeforeUnmount(() => { disposed = true; loadVersion += 1; resumeClosure = false; clearForm(); if (codeTimer) clearInterval(codeTimer) })
 </script>
 
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
+
+.summary-copy > view .status-warning { color:#9a4b16; background:#fff3e7; }
 
 .security-page{background:linear-gradient(180deg,#eafafa 0,#f7fbfb 420rpx)}
 .security-hero{background:linear-gradient(145deg,rgba(221,248,247,.92),rgba(255,255,255,.92))}
@@ -251,7 +314,16 @@ onShow(() => { if (guardCurrentPage()) load() })
 .section-title{margin:34rpx 4rpx 15rpx;font-size:28rpx}.setting-card{border-color:rgba(220,232,233,.9);border-radius:28rpx;background:rgba(255,255,255,.96);box-shadow:$dz-shadow-soft}.setting-row{min-height:126rpx;padding:21rpx 24rpx;background:transparent}.row-icon{width:70rpx;height:70rpx;border-radius:21rpx}.row-icon image{width:42rpx;height:42rpx}.row-copy{gap:8rpx;margin-left:20rpx}.row-copy strong{font-size:26rpx}.row-copy text{font-size:21rpx;line-height:1.45}.row-value{align-items:center;gap:10rpx;margin-left:14rpx;flex-direction:row}.row-value strong{font-size:22rpx;white-space:nowrap}.row-value text{padding:4rpx 9rpx;border-radius:12rpx;background:#eaf8f1;font-size:18rpx;white-space:nowrap}.row-value b{font-size:36rpx}.security-tip{gap:10rpx;margin-top:24rpx;padding:24rpx 26rpx;border:1rpx solid #eee5c9;border-radius:24rpx;background:rgba(255,250,234,.88)}.security-tip strong{font-size:24rpx}.security-tip text{font-size:22rpx;line-height:1.65}
 .security-sheet{padding:14rpx 30rpx calc(34rpx + env(safe-area-inset-bottom));border-radius:40rpx 40rpx 0 0;background:rgba(253,254,254,.98);box-shadow:$dz-shadow-sheet}.sheet-handle{width:76rpx;height:8rpx;margin-bottom:18rpx}.security-sheet header{padding:10rpx 0 24rpx}.security-sheet header strong{font-size:33rpx}.security-sheet header text{font-size:22rpx;line-height:1.5}.security-sheet header button{width:72rpx;height:72rpx;font-size:38rpx;line-height:72rpx}.sheet-form{gap:24rpx}.sheet-form label{gap:11rpx}.sheet-form label>text{font-size:24rpx}.password-field{height:96rpx;padding:0 10rpx 0 24rpx;border-radius:22rpx}.password-field input{font-size:25rpx}.password-field button{min-width:92rpx;height:72rpx;font-size:22rpx;line-height:72rpx}.session-note{gap:9rpx;padding:24rpx;border-radius:22rpx}.session-note strong{font-size:25rpx}.session-note text{font-size:22rpx;line-height:1.6}.submit-button{height:92rpx;border-radius:24rpx;font-size:27rpx;line-height:92rpx}
 .danger-card{border-color:rgba(229,72,77,.18)}.danger-icon{background:$dz-danger-soft}.danger-copy{color:$dz-danger}
+.security-sheet header button { display:flex; flex:none; align-items:center; justify-content:center; min-width:44px; min-height:44px; line-height:1; }
+.password-field button { min-height:44px; }
+.submit-button { display:flex; align-items:center; justify-content:center; min-height:44px; padding:12px 16px; line-height:1.4; box-sizing:border-box; }
+.submit-button[disabled] { opacity:1; color:#657580; background:#eaf0f1; }
+.submit-button.danger[disabled] { color:#925259; background:#fbe6e7; }
+.security-sheet { overflow-y:auto; overscroll-behavior:contain; box-sizing:border-box; }
+@media screen and (min-width:480px) { .security-sheet { margin:0 auto; transform:none; } }
 /* #ifdef H5 */
 .security-hero,.security-sheet{-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px)}
+.password-field button[disabled] { opacity:.55; }
+@media (prefers-reduced-transparency:reduce) { .security-hero,.security-sheet { background:#fff; backdrop-filter:none; -webkit-backdrop-filter:none; } }
 /* #endif */
 </style>

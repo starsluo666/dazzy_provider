@@ -33,6 +33,20 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return response.data
 }
 
+export function sendInitialPasswordCode() {
+  return request<DataResponse<{ expires_in: number; retry_after: number; debug_code?: string }>>(
+    '/auth/password/initial/code/', { method: 'POST' },
+  )
+}
+
+export async function setInitialPassword(code: string, newPassword: string) {
+  const response = await request<DataResponse<AuthSession>>('/auth/password/initial/', {
+    method: 'POST', data: { code, new_password: newPassword },
+  })
+  saveSession(response.data)
+  return response.data
+}
+
 export function sendPhoneChangeCode(target: 'current' | 'new', newPhone?: string) {
   return request<DataResponse<{ expires_in: number; retry_after: number; destination_masked: string; debug_code?: string }>>(
     '/auth/phone/change/code/',

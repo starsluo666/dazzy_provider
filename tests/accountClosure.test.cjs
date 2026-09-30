@@ -3,12 +3,12 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const ts = require('typescript'), vue = require('vue')
 const source = fs.readFileSync(path.resolve(__dirname, '../src/pages/security/index.vue'), 'utf8')
 const script = source.match(/<script setup lang="ts">([\s\S]*?)<\/script>/)[1]
-const compiled = ts.transpileModule(script + '\nglobalThis.page = { submit, security, loading, panel, currentPassword };', { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText
+const compiled = ts.transpileModule(script.replaceAll('import.meta.env', '({ DEV: false })') + '\nglobalThis.page = { submit, security, loading, panel, currentPassword, closureAgreed };', { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText
 async function run(data, approved = true) {
   const calls = { requests: [], modals: [], navigation: [], cleared: 0, toasts: [] }
   const context = { exports: {}, Error, require(name) {
-    if (name === 'vue') return vue
-    if (name === '@dcloudio/uni-app') return { onShow() {} }
+    if (name === 'vue') return { ...vue, onBeforeUnmount() {} }
+    if (name === '@dcloudio/uni-app') return { onShow() {}, onHide() {} }
     if (name === '@/services/auth') return { closeAccount: async password => { calls.requests.push(password); return { data } } }
     if (name === '@/services/session') return { clearSession: () => { calls.cleared++ } }
     if (name === '@/utils/formatters') return { formatBusinessDateTime: value => value }
@@ -23,6 +23,7 @@ async function run(data, approved = true) {
   page.security.value = { password_set: true }
   page.panel.value = 'close'
   page.currentPassword.value = 'local-test-pass-2026'
+  page.closureAgreed.value = true
   await page.submit()
   return { calls, page }
 }

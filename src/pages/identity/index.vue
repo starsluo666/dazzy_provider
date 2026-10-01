@@ -68,13 +68,13 @@
             <text class="section-heading">认证材料</text>
             <text class="section-hint">{{ locked ? '已锁定' : '请确保文字清晰、边角完整' }}</text>
           </view>
-          <button
+          <view
             v-for="item in photoItems"
             :key="item.key"
             class="material-row dz-tappable"
             :class="{ 'material-row-locked': locked }"
+            role="button"
             hover-class="dz-pressed"
-            :disabled="locked || uploading[item.key]"
             @tap="choosePhoto(item.key)"
           >
             <view class="photo-frame">
@@ -94,7 +94,7 @@
               <text>{{ uploading[item.key] ? '上传中' : item.id ? '更换' : '上传' }}</text>
               <text class="action-chevron">›</text>
             </view>
-          </button>
+          </view>
         </view>
 
         <view class="privacy-card">
@@ -106,8 +106,8 @@
 
     <view v-if="data && !loading && !error" class="identity-footer">
       <view v-if="!locked" class="footer-actions">
-        <button class="secondary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || uploadingAny" @tap="save()">保存资料</button>
-        <button class="primary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || uploadingAny" @tap="submit">{{ saving ? '处理中…' : '提交认证' }}</button>
+        <button class="secondary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || submitting || uploadingAny" @tap="save()">保存资料</button>
+        <button class="primary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || submitting || uploadingAny" @tap="submit">{{ submitting ? '提交中…' : '提交认证' }}</button>
       </view>
       <view v-else class="locked-note"><text>{{ lockedFooterCopy }}</text></view>
     </view>
@@ -124,7 +124,7 @@ import type { ProviderIdentity } from '@/types/api'
 import { getErrorMessage } from '@/utils/formatters'
 
 type PhotoKey = 'identity_front_photo' | 'identity_back_photo' | 'identity_face_photo'
-const loading = ref(true); const saving = ref(false); const error = ref('')
+const loading = ref(true); const saving = ref(false); const submitting = ref(false); const error = ref('')
 const uploading = reactive<Record<PhotoKey, boolean>>({
   identity_front_photo: false,
   identity_back_photo: false,
@@ -170,15 +170,36 @@ function apply(value: ProviderIdentity){ data.value=value; form.identity_real_na
 async function load(){ loading.value=true; error.value=''; try{ apply((await getProviderIdentity()).data) }catch(reason){ error.value=getErrorMessage(reason) }finally{ loading.value=false } }
 function payload(){ return { identity_real_name: form.identity_real_name.trim(), ...(form.id_number ? { id_number: form.id_number.trim().toUpperCase() } : {}), identity_front_photo_id: form.identity_front_photo_id, identity_back_photo_id: form.identity_back_photo_id, identity_face_photo_id: form.identity_face_photo_id } }
 async function save(silent=false){ if(saving.value)return false; saving.value=true; try{ apply((await saveProviderIdentity(payload())).data); if(!silent)uni.showToast({title:'资料已保存',icon:'success'}); return true }catch(reason){ uni.showToast({title:getErrorMessage(reason),icon:'none'}); return false }finally{ saving.value=false } }
-async function submit(){ if(!form.identity_real_name.trim())return uni.showToast({title:'请填写真实姓名',icon:'none'}); if(!form.id_number && !data.value?.identity_number_masked)return uni.showToast({title:'请填写身份证号码',icon:'none'}); if(!form.identity_front_photo_id||!form.identity_back_photo_id||!form.identity_face_photo_id)return uni.showToast({title:'请上传全部认证材料',icon:'none'}); if(!await save(true))return; try{ apply((await submitProviderIdentity()).data); uni.showToast({title:'已提交审核',icon:'success'}) }catch(reason){ uni.showToast({title:getErrorMessage(reason),icon:'none'}) } }
+async function submit() {
+  if (submitting.value || saving.value || uploadingAny.value || locked.value) return
+  if (!form.identity_real_name.trim()) return uni.showToast({ title: '请填写真实姓名', icon: 'none' })
+  if (!form.id_number && !data.value?.identity_number_masked) return uni.showToast({ title: '请填写身份证号码', icon: 'none' })
+  if (!form.identity_front_photo_id || !form.identity_back_photo_id || !form.identity_face_photo_id) {
+    return uni.showToast({ title: '请上传全部认证材料', icon: 'none' })
+  }
+  submitting.value = true
+  try {
+    if (!await save(true)) return
+    apply((await submitProviderIdentity()).data)
+    uni.showToast({ title: '已提交审核', icon: 'success' })
+  } catch (reason) {
+    uni.showModal({ title: '认证提交未通过', content: getErrorMessage(reason), showCancel: false })
+  } finally {
+    submitting.value = false
+  }
+}
 function choosePhoto(key: PhotoKey) {
-  if (locked.value || uploading[key]) return
+  if (locked.value || submitting.value || uploading[key]) return
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async ({ tempFilePaths, tempFiles }) => {
-      if (uploading[key] || !tempFilePaths[0]) return
+      if (uploading[key]) return
+      if (!tempFilePaths[0]) {
+        uni.showToast({ title: '未获取到图片，请重试', icon: 'none' })
+        return
+      }
       const file = Array.isArray(tempFiles) ? tempFiles[0] : tempFiles
       if (file?.size && file.size > 8 * 1024 * 1024) {
         uni.showToast({ title: '图片不能超过8MB', icon: 'none' })
@@ -194,6 +215,11 @@ function choosePhoto(key: PhotoKey) {
         uni.showToast({ title: getErrorMessage(reason), icon: 'none' })
       } finally {
         uploading[key] = false
+      }
+    },
+    fail: ({ errMsg }) => {
+      if (!/cancel/i.test(errMsg || '')) {
+        uni.showToast({ title: '打开相册失败，请重试', icon: 'none' })
       }
     },
   })

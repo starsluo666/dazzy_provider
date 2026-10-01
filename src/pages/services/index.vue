@@ -15,7 +15,7 @@
       <view v-else-if="!items.length" class="empty">
         <text class="empty-title">还没有服务项目</text>
         <text class="empty-copy">新增服务后，用户就能在达人主页发起预约</text>
-        <button class="empty-action dz-tappable" hover-class="dz-pressed" @tap="openEditor()">新增服务</button>
+        <button class="empty-action dz-tappable" hover-class="dz-pressed" @tap="openEditor()"><text class="empty-action-label">新增服务</text></button>
       </view>
       <template v-else>
         <view class="service-overview">
@@ -301,7 +301,8 @@ onLoad(() => { if (guardCurrentPage()) load() })
 .empty{display:flex;align-items:center;margin-top:150rpx;color:$dz-text-secondary;text-align:center;flex-direction:column}
 .empty-title{color:$dz-text-primary;font-size:32rpx;font-weight:750;line-height:1.35}
 .empty-copy{margin-top:14rpx;font-size:24rpx;line-height:1.65}
-.empty-action{width:300rpx;height:84rpx;margin-top:32rpx;border:0;border-radius:24rpx;color:#fff;background:$dz-brand;font-size:26rpx;font-weight:700}
+.empty-action{display:flex;width:300rpx;height:84rpx;align-items:center;justify-content:center;margin-top:32rpx;padding:0;border:0;border-radius:24rpx;color:#fff;background:$dz-brand;font-size:30rpx;font-weight:700;line-height:1}
+.empty-action-label{display:block;line-height:1.3}
 
 /* 编辑弹层由 DzBottomSheet 承载（拖拽收起/进出场动画），这里只定义表单字段。 */
 .sheet-fields{display:block;padding-top:2rpx}

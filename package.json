@@ -12,6 +12,8 @@
     "test:account-closure": "node tests/accountClosure.test.cjs",
     "test:legal": "node tests/legal.test.cjs",
     "test:security": "node tests/security.test.cjs",
+    "test:provider-setup": "node tests/providerSetup.test.cjs",
+    "test:provider-setup:mp": "node tests/providerSetupMp.test.cjs",
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {

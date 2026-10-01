@@ -74,31 +74,44 @@
         <view class="sheet-field">
           <text class="sheet-field-label">服务分类</text>
           <picker class="sheet-picker" :range="categories" range-key="name" @change="chooseCategory">
-            <view class="sheet-picker-value"><text :class="{ 'picker-placeholder': !categoryName }">{{ categoryName || '请选择' }}</text><text class="sheet-chevron">›</text></view>
+            <view class="sheet-control sheet-picker-value"><text class="sheet-picker-text" :class="{ 'picker-placeholder': !categoryName }">{{ categoryName || '请选择' }}</text><text class="sheet-chevron">›</text></view>
           </picker>
         </view>
         <view class="sheet-field">
           <text class="sheet-field-label">计费方式</text>
           <view class="segmented">
             <view class="segmented-thumb" :class="{ 'segmented-thumb--right': form.billing_type === 'per_session' }" />
-            <button class="segment" :class="{ 'segment-active': form.billing_type === 'hourly' }" @tap="form.billing_type = 'hourly'">按小时</button>
-            <button class="segment" :class="{ 'segment-active': form.billing_type === 'per_session' }" @tap="form.billing_type = 'per_session'">按次</button>
+            <button class="segment" :class="{ 'segment-active': form.billing_type === 'hourly' }" @tap="form.billing_type = 'hourly'"><text>按小时</text></button>
+            <button class="segment" :class="{ 'segment-active': form.billing_type === 'per_session' }" @tap="form.billing_type = 'per_session'"><text>按次</text></button>
+          </view>
+        </view>
+        <view class="sheet-field price-field">
+          <text class="sheet-field-label">价格（元）</text>
+          <view class="sheet-control-stack price-control">
+            <view class="sheet-control price-input-shell" :class="{ 'is-focused': focusedField === 'price' }">
+              <text class="price-input-currency">¥</text>
+              <input v-model="form.price" class="sheet-input price-input" type="digit" placeholder="请输入价格" placeholder-class="input-placeholder" aria-label="服务价格（元）" @focus="focusedField = 'price'" @blur="focusedField = ''" />
+            </view>
+            <text v-if="priceRange" class="sheet-hint price-limit">允许范围 ¥{{ money(priceRange.minimum) }}–{{ money(priceRange.maximum) }}</text>
           </view>
         </view>
         <view class="sheet-field">
-          <text class="sheet-field-label">价格（元）</text>
-          <input v-model="form.price" class="sheet-input" type="digit" placeholder="请输入价格" placeholder-class="input-placeholder" />
-          <text v-if="priceRange" class="price-limit">允许范围 ¥{{ money(priceRange.minimum) }}–{{ money(priceRange.maximum) }}</text>
-        </view>
-        <view class="sheet-field">
-          <text class="sheet-field-label">预计时长（分钟）</text>
-          <input v-model="form.duration" class="sheet-input" type="number" placeholder="例如 120" placeholder-class="input-placeholder" />
+          <text class="sheet-field-label">预计时长</text>
+          <view class="sheet-control duration-input-shell" :class="{ 'is-focused': focusedField === 'duration' }">
+            <input v-model="form.duration" class="sheet-input duration-input" type="number" placeholder="例如 120" placeholder-class="input-placeholder" aria-label="预计时长（分钟）" @focus="focusedField = 'duration'" @blur="focusedField = ''" />
+            <text class="sheet-input-unit">分钟</text>
+          </view>
         </view>
         <view class="sheet-field description-field">
           <text class="sheet-field-label">服务说明</text>
-          <textarea v-model="form.description" class="sheet-textarea" maxlength="500" placeholder="说明服务内容和注意事项" placeholder-class="input-placeholder" />
+          <view class="sheet-control-stack">
+            <view class="sheet-control sheet-control--multiline" :class="{ 'is-focused': focusedField === 'description' }">
+              <textarea v-model="form.description" class="sheet-textarea" maxlength="500" placeholder="说明服务内容和注意事项" placeholder-class="input-placeholder" aria-label="服务说明" @focus="focusedField = 'description'" @blur="focusedField = ''" />
+            </view>
+            <text class="sheet-hint sheet-count">{{ form.description.length }}/500</text>
+          </view>
         </view>
-        <button class="save dz-tappable" :class="{ 'save-disabled': saving || !canSave }" hover-class="dz-pressed" @tap="save">{{ saving ? '提交中…' : '提交服务审核' }}</button>
+        <button class="save dz-tappable" :class="{ 'save-disabled': saving || !canSave }" hover-class="dz-pressed" @tap="save"><text>{{ saving ? '提交中…' : '提交服务审核' }}</text></button>
       </view>
     </DzBottomSheet>
   </view>
@@ -127,6 +140,7 @@ const loading = ref(true)
 const error = ref('')
 const editing = ref(false)
 const saving = ref(false)
+const focusedField = ref('')
 const form = reactive({
   id: 0,
   category_id: 0,
@@ -179,6 +193,7 @@ async function load() {
 }
 
 function openEditor(item?: ProviderManagedService) {
+  focusedField.value = ''
   Object.assign(form, item
     ? {
         id: item.id || 0,
@@ -199,7 +214,7 @@ function openEditor(item?: ProviderManagedService) {
   editing.value = true
 }
 
-function close() { editing.value = false }
+function close() { editing.value = false; focusedField.value = '' }
 function chooseCategory(event: Event) {
   form.category_id = categories.value[Number((event as CustomEvent<{ value: string }>).detail.value)]?.id || 0
 }
@@ -252,7 +267,7 @@ onLoad(() => { if (guardCurrentPage()) load() })
 @use '../../styles/tokens.scss' as *;
 
 .services-page{min-height:100vh;background:linear-gradient(180deg,#edfafa 0,#f5f9f9 360rpx,#f1f5f5 100%);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-synthesis:none;line-break:strict}
-.review-reason,.price-limit{display:block;margin-top:10rpx;color:#bf4a3d;font-size:21rpx;line-height:1.45}.price-limit{color:$dz-text-tertiary;text-align:right}
+.review-reason{display:block;margin-top:10rpx;color:#bf4a3d;font-size:21rpx;line-height:1.45}
 .hero{background:rgba(247,252,252,.94)}
 .nav{position:sticky;z-index:30;top:0;display:flex;height:100rpx;align-items:center;justify-content:space-between}
 .nav-back{display:flex;width:88rpx;height:80rpx;align-items:center;justify-content:flex-start;margin:0;padding:0;border:0;background:transparent;font-size:54rpx;line-height:1}
@@ -306,24 +321,33 @@ onLoad(() => { if (guardCurrentPage()) load() })
 
 /* 编辑弹层由 DzBottomSheet 承载（拖拽收起/进出场动画），这里只定义表单字段。 */
 .sheet-fields{display:block;padding-top:2rpx}
-.sheet-field{display:flex;min-height:96rpx;align-items:center;border-bottom:1rpx solid rgba(31,65,72,.06)}
-.sheet-field-label{width:200rpx;flex:none;color:$dz-text-primary;font-size:24rpx;font-weight:700;line-height:1.4}
-.sheet-picker,.sheet-input{min-width:0;flex:1;color:$dz-text-primary;font-size:25rpx;text-align:right}
-.sheet-picker-value{display:flex;align-items:center;justify-content:flex-end}
+.sheet-field{display:flex;align-items:flex-start;gap:16rpx;padding:12rpx 0}
+.sheet-field-label{display:flex;width:184rpx;min-height:88rpx;flex:none;align-items:center;color:$dz-text-primary;font-size:25rpx;font-weight:600;line-height:1.4}
+.sheet-picker{min-width:0;flex:1}
+.sheet-control-stack{display:flex;min-width:0;flex:1;gap:12rpx;flex-direction:column}
+.sheet-control{display:flex;box-sizing:border-box;min-width:0;width:100%;min-height:88rpx;flex:1;align-items:center;gap:12rpx;padding:0 20rpx;border:1rpx solid #dce7e8;border-radius:18rpx;background:#fff}
+.sheet-control.is-focused{border-color:#08a9b1;box-shadow:0 0 0 3rpx rgba(17,193,196,.1)}
+.sheet-picker-value{justify-content:space-between;color:$dz-text-primary;font-size:27rpx;line-height:1.4}
+.sheet-picker-text{overflow:hidden;min-width:0;text-overflow:ellipsis;white-space:nowrap}
+.sheet-input{display:block;box-sizing:border-box;min-width:0;width:100%;height:64rpx;flex:1;padding:0;border:0;color:$dz-text-primary;background:transparent;font-size:27rpx;line-height:64rpx;text-align:left;font-variant-numeric:tabular-nums}
+.sheet-input-unit{flex:none;color:#667085;font-size:23rpx;line-height:1.4}
 .picker-placeholder{color:$dz-text-tertiary}
 .input-placeholder{color:$dz-text-tertiary}
-.sheet-chevron{margin-left:5rpx;color:$dz-text-tertiary;font-size:31rpx;font-weight:400}
+.sheet-chevron{flex:none;margin-left:5rpx;color:$dz-text-tertiary;font-size:31rpx;font-weight:400}
+.price-input-currency{flex:none;color:#64777d;font-size:27rpx;line-height:1}
+.sheet-hint{display:block;color:#667085;font-size:22rpx;line-height:1.5;text-align:right;overflow-wrap:anywhere}
 
 /* iOS 风格分段控件：灰底轨道 + 白色滑块，选中态只变字色，动效仅 transform。 */
-.segmented{position:relative;display:flex;flex:1;height:72rpx;padding:6rpx;border-radius:22rpx;background:#e9f1f1;box-sizing:border-box}
-.segmented-thumb{position:absolute;top:6rpx;left:6rpx;width:calc(50% - 6rpx);height:calc(100% - 12rpx);border-radius:17rpx;background:#fff;box-shadow:0 4rpx 12rpx rgba(19,34,40,.1);transition:transform $dz-duration-base $dz-ease-out}
+.segmented{position:relative;display:flex;min-width:0;flex:1;height:88rpx;padding:6rpx;border:1rpx solid #dce7e8;border-radius:18rpx;background:#e9f1f1;box-sizing:border-box}
+.segmented-thumb{position:absolute;top:6rpx;left:6rpx;width:calc(50% - 6rpx);height:calc(100% - 12rpx);border-radius:12rpx;background:#fff;box-shadow:0 4rpx 12rpx rgba(19,34,40,.1);transition:transform $dz-duration-base $dz-ease-out}
 .segmented-thumb--right{transform:translateX(100%)}
-.segment{position:relative;z-index:1;flex:1;height:60rpx;margin:0;padding:0;border:0;background:transparent;color:$dz-text-secondary;font-size:23rpx;line-height:60rpx;transition:color $dz-duration-fast ease}
-.segment-active{color:$dz-brand-deep;font-weight:700}
+.segment{position:relative;z-index:1;display:flex;min-width:0;flex:1;height:100%;align-items:center;justify-content:center;margin:0;padding:0;border:0;background:transparent;color:$dz-text-secondary;font-size:26rpx;line-height:1.4;transition:color $dz-duration-fast ease}
+.segment-active{color:#087b80;font-weight:600}
 
-.description-field{align-items:flex-start;padding:24rpx 0}
-.sheet-textarea{width:100%;height:120rpx;font-size:24rpx;line-height:1.55;text-align:right}
-.save{width:100%;height:88rpx;margin:30rpx 0 6rpx;border:0;border-radius:24rpx;color:#fff;background:$dz-brand;box-shadow:$dz-shadow-control;font-size:27rpx;font-weight:700;line-height:88rpx}
+.description-field .sheet-field-label{min-height:0;padding-top:22rpx}
+.sheet-control--multiline{align-items:flex-start;padding:20rpx}
+.sheet-textarea{display:block;box-sizing:border-box;width:100%;height:156rpx;padding:0;border:0;color:$dz-text-primary;background:transparent;font-size:27rpx;line-height:1.55;text-align:left}
+.save{display:flex;width:100%;height:88rpx;align-items:center;justify-content:center;margin:22rpx 0 6rpx;padding:0;border:0;border-radius:18rpx;color:#fff;background:$dz-brand;box-shadow:$dz-shadow-control;font-size:28rpx;font-weight:600;line-height:1.4}
 .save-disabled{box-shadow:none;opacity:.45}
 /* #ifdef H5 */
 .hero{-webkit-backdrop-filter:saturate(170%) blur(22px);backdrop-filter:saturate(170%) blur(22px)}

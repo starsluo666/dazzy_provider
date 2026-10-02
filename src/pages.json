@@ -13,7 +13,8 @@
     { "path": "pages/schedule/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/orders/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/orders/detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/income/index", "style": { "navigationStyle": "custom" } }
+    { "path": "pages/income/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/receiving-account/index", "style": { "navigationStyle": "custom" } }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

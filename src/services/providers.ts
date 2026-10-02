@@ -6,6 +6,7 @@ import type {
   ProviderScheduleDay,
   ProviderWorkbench,
   ProviderIncomeData,
+  ProviderReceivingAccount,
   ProviderIdentity,
   ProviderProfileData,
   ServiceCategory,
@@ -17,6 +18,15 @@ export const getProviderWorkbench = () =>
 
 export const getProviderIncome = () =>
   request<DataResponse<ProviderIncomeData>>('/providers/me/income/')
+
+export const getProviderReceivingAccount = () =>
+  request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/')
+
+export const saveProviderReceivingAccount = (data: Record<string, unknown>) =>
+  request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/', { method: 'PUT', data })
+
+export const clearProviderReceivingAccount = () =>
+  request<void>('/providers/me/receiving-account/', { method: 'DELETE' })
 
 export const getProviderIdentity = () =>
   request<DataResponse<ProviderIdentity>>('/providers/me/identity/')

@@ -291,3 +291,25 @@ export interface NotificationListResponse {
     summary: NotificationSummary
   }
 }
+export interface ProviderReceivingAccount {
+  materials_saved: boolean
+  status_label: string
+  channel_status: 'not_connected'
+  channel_notice: string
+  collection_enabled: boolean
+  collection_unavailable_reason: string
+  identity_verified: boolean
+  real_name: string
+  id_number_masked: string
+  bank_card_masked: string
+  mobile_masked: string
+  bank_name: string
+  bank_province: string
+  bank_city: string
+  cert_begin_date: string | null
+  cert_end_date: string | null
+  cert_long_term: boolean
+  consent_version: string
+  collection_notice: string
+  updated_at: string | null
+}

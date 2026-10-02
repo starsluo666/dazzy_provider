@@ -128,6 +128,7 @@ const entries = [
   { label: '服务管理', path: '/pages/services/index', icon: '/static/icons/service.svg' },
   { label: '档期管理', path: '/pages/schedule/index', icon: '/static/icons/schedule.svg' },
   { label: '收入明细', path: '/pages/income/index', icon: '/static/icons/income.svg' },
+  { label: '收款账户', path: '/pages/receiving-account/index', icon: '/static/icons/security.svg' },
   { label: '达人订单', path: '/pages/orders/index', icon: '/static/icons/orders.svg' },
   { label: '账号设置', path: '/pages/security/index', icon: '/static/icons/security.svg' },
 ]

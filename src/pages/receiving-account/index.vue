@@ -14,16 +14,16 @@
           <view class="status-heading">
             <view class="status-icon"><image class="status-image" src="/static/icons/income.svg" mode="aspectFit" /></view>
             <view class="status-copy">
-              <text class="eyebrow">本人收款资料</text>
-              <text class="status-title">{{ account.materials_saved ? '资料已保存' : '为收款做好准备' }}</text>
+              <text class="eyebrow">本人银行卡结算</text>
+              <text class="status-title">{{ account.status_label }}</text>
             </view>
-            <text class="status-badge">待渠道开通</text>
+            <text class="status-badge" :class="{ 'badge-ready': account.channel_status === 'active' }">{{ account.channel_status === 'active' ? '已开通' : '待确认' }}</text>
           </view>
           <text class="status-description">{{ account.channel_notice }}</text>
           <view class="steps">
             <view class="step" :class="{ complete: account.identity_verified }"><text class="step-mark">{{ account.identity_verified ? '✓' : '1' }}</text><text>平台实名</text></view>
             <view class="step" :class="{ complete: account.materials_saved }"><text class="step-mark">{{ account.materials_saved ? '✓' : '2' }}</text><text>保存资料</text></view>
-            <view class="step"><text class="step-mark">3</text><text>渠道开通</text></view>
+            <view class="step" :class="{ complete: account.channel_status === 'active' }"><text class="step-mark">{{ account.channel_status === 'active' ? '✓' : '3' }}</text><text>渠道开通</text></view>
           </view>
         </view>
 
@@ -32,19 +32,20 @@
           <text class="helper">仅接受与你实名认证一致的本人收款资料。</text>
           <button class="secondary-button" hover-class="dz-pressed" @tap="openIdentity">去实名认证</button>
         </view>
-        <view v-else-if="!account.collection_enabled" class="notice-card">
+        <view v-else-if="!account.collection_enabled && !account.can_refresh" class="notice-card">
           <text class="notice-title">资料填写暂未开放</text>
           <text class="helper">{{ account.collection_unavailable_reason }}</text>
         </view>
 
-        <view v-if="account.materials_saved && !account.collection_enabled" class="form-card">
+        <view v-if="account.materials_saved" class="form-card">
           <text class="section-title">已保存资料</text>
           <text class="summary-line">{{ account.bank_name }} · {{ account.bank_card_masked }}</text>
           <text class="helper">{{ account.bank_province }} {{ account.bank_city }}</text>
           <text class="helper">联系电话 {{ account.mobile_masked }}</text>
+          <text v-if="!account.can_edit" class="helper">资料已提交渠道，如需换卡、更正或注销，请联系客服。</text>
         </view>
 
-        <template v-if="account.identity_verified && account.collection_enabled">
+        <template v-if="account.identity_verified && account.can_edit">
           <view class="form-card">
             <view class="section-heading"><text class="section-title">身份信息</text><text class="section-note">与实名认证一致</text></view>
             <view class="field">
@@ -77,10 +78,10 @@
             <view class="field"><text class="field-label">银行卡号</text><input v-model="form.bank_card_number" class="field-input" type="number" :maxlength="19" :disabled="busy" :placeholder="account.materials_saved ? account.bank_card_masked : '输入本人银行卡号'" placeholder-class="field-placeholder" aria-label="银行卡号" /><text v-if="account.materials_saved" class="helper">卡号和联系电话留空时保留原资料。</text></view>
             <view class="field"><text class="field-label">开户银行</text><input v-model="form.bank_name" class="field-input" :maxlength="60" :disabled="busy" placeholder="例如：中国工商银行" placeholder-class="field-placeholder" aria-label="开户银行" /></view>
             <view class="area-fields">
-              <view class="area-field"><text class="field-label">银行所在省份</text><input v-model="form.bank_province" class="field-input" :maxlength="40" :disabled="busy" placeholder="例如：河北省" placeholder-class="field-placeholder" aria-label="银行所在省份" /></view>
-              <view class="area-field"><text class="field-label">银行所在城市</text><input v-model="form.bank_city" class="field-input" :maxlength="40" :disabled="busy" placeholder="例如：邯郸市" placeholder-class="field-placeholder" aria-label="银行所在城市" /></view>
+              <view class="area-field"><text class="field-label">银行所在省份</text><picker :range="regions" range-key="name" :value="provinceIndex" :disabled="busy" @change="selectProvince"><view class="date-field"><text>{{ form.bank_province || '选择省份' }}</text><text class="chevron">›</text></view></picker></view>
+              <view class="area-field"><text class="field-label">银行所在城市</text><picker :range="cities" range-key="name" :value="cityIndex" :disabled="busy || !form.bank_province_code" @change="selectCity"><view class="date-field"><text>{{ form.bank_city || '选择城市' }}</text><text class="chevron">›</text></view></picker></view>
             </view>
-            <view class="field"><text class="field-label">联系电话</text><input v-model="form.mobile" class="field-input" type="number" :maxlength="11" :disabled="busy" :placeholder="account.materials_saved ? account.mobile_masked : '输入本人联系电话'" placeholder-class="field-placeholder" aria-label="联系电话" /><text class="helper">用于后续开户联系；银行卡预留手机号会在正式绑卡时按渠道要求核实。</text></view>
+            <view class="field"><text class="field-label">银行卡预留手机号</text><input v-model="form.mobile" class="field-input" type="number" :maxlength="11" :disabled="busy" :placeholder="account.materials_saved ? account.mobile_masked : '输入银行预留的本人手机号'" placeholder-class="field-placeholder" aria-label="银行卡预留手机号" /><text class="helper">同时用于渠道开户联系，请确认与银行预留信息一致。</text></view>
           </view>
 
           <view class="privacy-card">
@@ -90,11 +91,25 @@
               <label class="consent-row"><checkbox class="consent-checkbox" value="accepted" :checked="consent" :disabled="busy" color="#087f86" /><text class="consent-text">我已阅读并同意以上收款资料收集说明</text></label>
             </checkbox-group>
           </view>
-          <text v-if="formError" class="form-error" role="alert">{{ formError }}</text>
           <button class="save-button" :class="{ 'is-disabled': busy || !consent }" :disabled="busy || !consent" :loading="saving" hover-class="dz-pressed" @tap="save">{{ saving ? '正在保存…' : '保存收款资料' }}</button>
           <text class="save-note">保存不会开户、绑卡或扣款</text>
         </template>
-        <button v-if="account.materials_saved" class="clear-button" :disabled="busy" :loading="clearing" hover-class="dz-pressed" @tap="confirmClear">清除已保存的收款资料</button>
+        <view v-if="account.materials_saved" class="form-card channel-card">
+          <text class="section-title">申请渠道开户</text>
+          <text v-if="account.can_submit" class="helper">将提交上方已保存的本人资料。若刚修改了输入内容，请先保存再申请。</text>
+          <template v-if="account.can_submit">
+            <text class="helper">{{ account.onboarding_notice }}</text>
+            <checkbox-group @change="changeOnboardingConsent"><label class="consent-row"><checkbox class="consent-checkbox" value="accepted" :checked="onboardingConsent" :disabled="busy" color="#087f86" /><text class="consent-text">我已核对已保存资料，并同意以上开户及结算授权</text></label></checkbox-group>
+            <text v-if="hasUnsavedChanges" class="form-error">有尚未保存的修改，请先保存资料，再申请开户。</text>
+            <button class="save-button" :class="{ 'is-disabled': busy || !onboardingConsent || hasUnsavedChanges }" :disabled="busy || !onboardingConsent || hasUnsavedChanges" :loading="submitting" @tap="submit">{{ submitting ? '正在提交渠道…' : account.channel_status === 'registered' ? '继续开通银行卡结算' : '申请开户并绑定结算卡' }}</button>
+          </template>
+          <text v-else-if="!account.onboarding_enabled && !account.can_refresh" class="helper">平台尚未启用渠道开户。资料已安全保存，不会自动提交，请联系平台完成配置。</text>
+          <text v-else class="helper">{{ account.channel_notice }}</text>
+          <button v-if="account.can_refresh" class="secondary-button" :disabled="busy" :loading="refreshing" @tap="refresh">{{ refreshing ? '正在查询渠道…' : '刷新渠道状态' }}</button>
+          <text class="helper">开通只表示银行卡结算配置就绪，不代表订单已分账或银行卡已到账。</text>
+        </view>
+        <text v-if="formError" class="form-error" role="alert">{{ formError }}</text>
+        <button v-if="account.can_clear" class="clear-button" :disabled="busy" :loading="clearing" hover-class="dz-pressed" @tap="confirmClear">清除已保存的收款资料</button>
       </template>
     </view>
   </view>
@@ -104,22 +119,34 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onUnload, onShow } from '@dcloudio/uni-app'
 import NetworkState from '@/components/NetworkState.vue'
-import { clearProviderReceivingAccount, getProviderReceivingAccount, saveProviderReceivingAccount } from '@/services/providers'
-import type { ProviderReceivingAccount } from '@/types/api'
+import { clearProviderReceivingAccount, getProviderReceivingAccount, saveProviderReceivingAccount, getReceivingBankRegions, submitProviderReceivingAccount, refreshProviderReceivingAccount } from '@/services/providers'
+import type { ProviderReceivingAccount, ReceivingBankProvince } from '@/types/api'
 import { getErrorMessage } from '@/utils/formatters'
 
 const account = ref<ProviderReceivingAccount | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const clearing = ref(false)
-const busy = computed(() => saving.value || clearing.value)
+const submitting = ref(false)
+const refreshing = ref(false)
+const onboardingConsent = ref(false)
+const regions = ref<ReceivingBankProvince[]>([])
+const busy = computed(() => saving.value || clearing.value || submitting.value || refreshing.value)
 const error = ref('')
 const formError = ref('')
 const consent = ref(false)
 const returningFromIdentity = ref(false)
 const now = new Date()
 const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-const form = reactive({ id_number: '', bank_card_number: '', mobile: '', cert_begin_date: '', cert_end_date: '', cert_long_term: false, bank_name: '', bank_province: '', bank_city: '' })
+const form = reactive({ id_number: '', bank_card_number: '', mobile: '', cert_begin_date: '', cert_end_date: '', cert_long_term: false, bank_name: '', bank_province: '', bank_city: '', bank_province_code: '', bank_city_code: '' })
+const savedForm = ref('')
+const hasUnsavedChanges = computed(() => Boolean(account.value?.can_edit && JSON.stringify(form) !== savedForm.value))
+const provinceIndex = computed(() => Math.max(0, regions.value.findIndex(p => p.code === form.bank_province_code)))
+const cities = computed(() => regions.value.find(p => p.code === form.bank_province_code)?.cities || [])
+const cityIndex = computed(() => Math.max(0, cities.value.findIndex(c => c.code === form.bank_city_code)))
+function selectProvince(event: { detail: { value: string } }) { const p = regions.value[Number(event.detail.value)]; if (!p) return; form.bank_province = p.name; form.bank_province_code = p.code; form.bank_city = ''; form.bank_city_code = '' }
+function selectCity(event: { detail: { value: string } }) { const c = cities.value[Number(event.detail.value)]; if (!c) return; form.bank_city = c.name; form.bank_city_code = c.code }
+function changeOnboardingConsent(event: { detail: { value: string[] } }) { onboardingConsent.value = event.detail.value.includes('accepted') }
 
 function clearSensitiveInputs() { form.id_number = ''; form.bank_card_number = ''; form.mobile = '' }
 function applyAccount(value: ProviderReceivingAccount) {
@@ -131,7 +158,11 @@ function applyAccount(value: ProviderReceivingAccount) {
   form.bank_name = value.bank_name
   form.bank_province = value.bank_province
   form.bank_city = value.bank_city
+  form.bank_province_code = value.bank_province_code
+  form.bank_city_code = value.bank_city_code
+  savedForm.value = JSON.stringify(form)
   consent.value = false
+  onboardingConsent.value = false
 }
 function goBack() { uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/profile/index' }) }) }
 function openIdentity() { returningFromIdentity.value = true; uni.navigateTo({ url: '/pages/identity/index' }) }
@@ -141,14 +172,14 @@ function changeConsent(event: { detail: { value: string[] } }) { consent.value =
 async function load() {
   loading.value = true
   error.value = ''
-  try { applyAccount((await getProviderReceivingAccount()).data) }
+  try { const [result, areaResult] = await Promise.all([getProviderReceivingAccount(), getReceivingBankRegions()]); regions.value = areaResult.data; applyAccount(result.data) }
   catch (reason) { error.value = getErrorMessage(reason, '收款资料加载失败') }
   finally { loading.value = false }
 }
 async function save() {
-  if (busy.value || !consent.value || !account.value?.collection_enabled) return
+  if (busy.value || !consent.value || !account.value?.can_edit) return
   formError.value = ''
-  if ((!account.value.materials_saved && (!form.id_number.trim() || !form.bank_card_number.trim() || !form.mobile.trim())) || !form.cert_begin_date || (!form.cert_long_term && !form.cert_end_date) || !form.bank_name.trim() || !form.bank_province.trim() || !form.bank_city.trim()) {
+  if ((!account.value.materials_saved && (!form.id_number.trim() || !form.bank_card_number.trim() || !form.mobile.trim())) || !form.cert_begin_date || (!form.cert_long_term && !form.cert_end_date) || !form.bank_name.trim() || !form.bank_province_code || !form.bank_city_code) {
     formError.value = '请完整填写身份信息、证件有效期和本人银行卡资料。'
     return
   }
@@ -159,6 +190,20 @@ async function save() {
     uni.showToast({ title: '资料已保存，待渠道开通', icon: 'none' })
   } catch (reason) { formError.value = getErrorMessage(reason, '保存失败，请稍后再试') }
   finally { saving.value = false }
+}
+async function submit() {
+  if (busy.value || !onboardingConsent.value || hasUnsavedChanges.value || !account.value?.can_submit) return
+  submitting.value = true; formError.value = ''
+  try { applyAccount((await submitProviderReceivingAccount(account.value.onboarding_consent_version)).data) }
+  catch (reason) { formError.value = getErrorMessage(reason, '渠道结果尚未确认，请刷新状态后再操作'); await load() }
+  finally { submitting.value = false }
+}
+async function refresh() {
+  if (busy.value || !account.value?.can_refresh) return
+  refreshing.value = true; formError.value = ''
+  try { applyAccount((await refreshProviderReceivingAccount()).data) }
+  catch (reason) { formError.value = getErrorMessage(reason, '暂时无法查询渠道，请稍后刷新') }
+  finally { refreshing.value = false }
 }
 function confirmClear() {
   if (busy.value) return
@@ -178,6 +223,7 @@ onUnload(clearSensitiveInputs)
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
 .receiving-page{min-height:100vh;background:#f3f7f8}
+.status-badge.badge-ready{background:#e2f5ea;color:#16754b}.channel-card{margin-top:24rpx}.date-field{gap:8rpx;overflow:hidden}
 .page-title{font-size:31rpx;font-weight:650}.head-spacer{width:80rpx}.back-button{display:flex;width:80rpx;min-height:88rpx;align-items:center;justify-content:flex-start;margin:0;padding:0;border:0;background:transparent;font-size:52rpx;line-height:1}.back-button::after{border:0}
 .receiving-content{padding-top:16rpx;padding-bottom:calc(48rpx + env(safe-area-inset-bottom))}
 .status-card,.form-card,.notice-card{margin-bottom:24rpx;padding:28rpx;border:1rpx solid #e0e9ec;border-radius:28rpx;background:#fff}

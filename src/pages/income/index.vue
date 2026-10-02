@@ -16,7 +16,7 @@
           <view><text>累计账务结算</text><strong class="strong-text">¥{{ formatAmount(data.summary.settled_amount) }}</strong></view>
         </section>
         <button class="receiving-entry" hover-class="dz-pressed" @tap="openReceivingAccount">
-          <view class="receiving-copy"><text class="receiving-title">收款账户</text><text class="receiving-note">管理本人收款资料 · 渠道待开通</text></view>
+          <view class="receiving-copy"><text class="receiving-title">收款账户</text><text class="receiving-note">管理本人银行卡 · 查看渠道开通状态</text></view>
           <text class="receiving-arrow">›</text>
         </button>
         <text class="ledger-note">以上为平台账务记录，不代表渠道已分账或银行卡已到账。</text>

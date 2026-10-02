@@ -7,6 +7,7 @@ import type {
   ProviderWorkbench,
   ProviderIncomeData,
   ProviderReceivingAccount,
+  ReceivingBankProvince,
   ProviderIdentity,
   ProviderProfileData,
   ServiceCategory,
@@ -21,6 +22,15 @@ export const getProviderIncome = () =>
 
 export const getProviderReceivingAccount = () =>
   request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/')
+
+export const getReceivingBankRegions = () =>
+  request<DataResponse<ReceivingBankProvince[]>>('/providers/me/receiving-account/regions/')
+
+export const submitProviderReceivingAccount = (consent_version: string) =>
+  request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/submit/', { method: 'POST', data: { consent_accepted: true, consent_version } })
+
+export const refreshProviderReceivingAccount = () =>
+  request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/refresh/', { method: 'POST' })
 
 export const saveProviderReceivingAccount = (data: Record<string, unknown>) =>
   request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/', { method: 'PUT', data })

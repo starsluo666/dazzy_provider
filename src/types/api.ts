@@ -294,8 +294,21 @@ export interface NotificationListResponse {
 export interface ProviderReceivingAccount {
   materials_saved: boolean
   status_label: string
-  channel_status: 'not_connected'
+  channel_status: 'not_connected' | 'registering' | 'registered' | 'configuring' | 'pending' | 'active' | 'rejected' | 'attention'
   channel_notice: string
+  audit_status: string
+  card_status: string
+  settlement_status: string
+  channel_checked_at: string | null
+  can_edit: boolean
+  can_clear: boolean
+  can_submit: boolean
+  can_refresh: boolean
+  onboarding_enabled: boolean
+  onboarding_consent_version: string
+  onboarding_notice: string
+  bank_province_code: string
+  bank_city_code: string
   collection_enabled: boolean
   collection_unavailable_reason: string
   identity_verified: boolean
@@ -312,4 +325,10 @@ export interface ProviderReceivingAccount {
   consent_version: string
   collection_notice: string
   updated_at: string | null
+}
+
+export interface ReceivingBankProvince {
+  name: string
+  code: string
+  cities: { name: string; code: string }[]
 }

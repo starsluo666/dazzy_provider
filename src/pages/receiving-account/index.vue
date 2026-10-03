@@ -14,7 +14,7 @@
           <view class="status-heading">
             <view class="status-icon"><image class="status-image" src="/static/icons/income.svg" mode="aspectFit" /></view>
             <view class="status-copy">
-              <text class="eyebrow">本人银行卡结算</text>
+              <text class="eyebrow">余额提现 · 本人银行卡</text>
               <text class="status-title">{{ account.status_label }}</text>
             </view>
             <text class="status-badge" :class="{ 'badge-ready': account.channel_status === 'active' }">{{ account.channel_status === 'active' ? '已开通' : '待确认' }}</text>
@@ -99,14 +99,14 @@
           <text v-if="account.can_submit" class="helper">将提交上方已保存的本人资料。若刚修改了输入内容，请先保存再申请。</text>
           <template v-if="account.can_submit">
             <text class="helper">{{ account.onboarding_notice }}</text>
-            <checkbox-group @change="changeOnboardingConsent"><label class="consent-row"><checkbox class="consent-checkbox" value="accepted" :checked="onboardingConsent" :disabled="busy" color="#087f86" /><text class="consent-text">我已核对已保存资料，并同意以上开户及结算授权</text></label></checkbox-group>
+            <checkbox-group @change="changeOnboardingConsent"><label class="consent-row"><checkbox class="consent-checkbox" value="accepted" :checked="onboardingConsent" :disabled="busy" color="#087f86" /><text class="consent-text">我已核对已保存资料，并同意以上开户及手动提现授权</text></label></checkbox-group>
             <text v-if="hasUnsavedChanges" class="form-error">有尚未保存的修改，请先保存资料，再申请开户。</text>
-            <button class="save-button" :class="{ 'is-disabled': busy || !onboardingConsent || hasUnsavedChanges }" :disabled="busy || !onboardingConsent || hasUnsavedChanges" :loading="submitting" @tap="submit">{{ submitting ? '正在提交渠道…' : account.channel_status === 'registered' ? '继续开通银行卡结算' : '申请开户并绑定结算卡' }}</button>
+            <button class="save-button" :class="{ 'is-disabled': busy || !onboardingConsent || hasUnsavedChanges }" :disabled="busy || !onboardingConsent || hasUnsavedChanges" :loading="submitting" @tap="submit">{{ submitting ? '正在提交…' : account.can_refresh ? '确认手动提现授权并继续' : '申请开户并开通手动提现' }}</button>
           </template>
           <text v-else-if="!account.onboarding_enabled && !account.can_refresh" class="helper">平台尚未启用渠道开户。资料已安全保存，不会自动提交，请联系平台完成配置。</text>
           <text v-else class="helper">{{ account.channel_notice }}</text>
           <button v-if="account.can_refresh" class="secondary-button" :disabled="busy" :loading="refreshing" @tap="refresh">{{ refreshing ? '正在查询渠道…' : '刷新渠道状态' }}</button>
-          <text class="helper">开通只表示银行卡结算配置就绪，不代表订单已分账或银行卡已到账。</text>
+          <text class="helper">订单分账核验后先计入达人余额，再由你主动申请提现。旧账户需平台关闭汇付自动结算；开通本身不代表银行卡已到账。</text>
         </view>
         <text v-if="formError" class="form-error" role="alert">{{ formError }}</text>
         <button v-if="account.can_clear" class="clear-button" :disabled="busy" :loading="clearing" hover-class="dz-pressed" @tap="confirmClear">清除已保存的收款资料</button>

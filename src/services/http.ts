@@ -4,6 +4,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\
 const AUTH_REQUEST_TIMEOUT = 12000
 
 interface RequestOptions {
+  timeout?: number
   query?: Record<string, string | number | undefined>
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   data?: Record<string, unknown> | string | ArrayBuffer
@@ -92,7 +93,7 @@ export function request<T>(path: string, options: RequestOptions = {}, retried =
             ? { 'X-Dazzy-Demo-User': import.meta.env.VITE_DEMO_USER_PUBLIC_ID }
             : {}),
       },
-      timeout: AUTH_REQUEST_TIMEOUT,
+      timeout: options.timeout || AUTH_REQUEST_TIMEOUT,
       success: (response) => {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           resolve(response.data as T)
@@ -109,7 +110,7 @@ export function request<T>(path: string, options: RequestOptions = {}, retried =
             .catch(reject)
           return
         }
-        reject(new Error(errorMessage(response.data, `请求失败（${response.statusCode}）`)))
+        reject(Object.assign(new Error(errorMessage(response.data, `请求失败（${response.statusCode}）`)), { status: response.statusCode }))
       },
       fail: (error) => reject(new Error(error.errMsg || '网络连接失败')),
     })

@@ -6,6 +6,7 @@ import type {
   ProviderScheduleDay,
   ProviderWorkbench,
   ProviderIncomeData,
+  ProviderWithdrawal,
   ProviderReceivingAccount,
   ReceivingBankProvince,
   ProviderIdentity,
@@ -19,6 +20,12 @@ export const getProviderWorkbench = () =>
 
 export const getProviderIncome = () =>
   request<DataResponse<ProviderIncomeData>>('/providers/me/income/')
+
+export const createProviderWithdrawal = (amount: number, request_key: string) =>
+  request<DataResponse<ProviderWithdrawal>>('/providers/me/income/withdrawals/', { method: 'POST', timeout: 60000, data: { amount, request_key } })
+
+export const refreshProviderWithdrawal = (withdrawalNo: string) =>
+  request<DataResponse<ProviderWithdrawal>>(`/providers/me/income/withdrawals/${encodeURIComponent(withdrawalNo)}/refresh/`, { method: 'POST', timeout: 60000 })
 
 export const getProviderReceivingAccount = () =>
   request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/')

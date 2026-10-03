@@ -137,6 +137,15 @@ export interface ProviderIncomeItem {
 }
 
 export interface ProviderIncomeData {
+  wallet?: {
+    available_amount: number
+    reserved_amount: number
+    paid_amount: number
+    can_withdraw: boolean
+    unavailable_reason: string
+    max_withdrawal_amount: number
+    withdrawals: ProviderWithdrawal[]
+  }
   summary: {
     month_income_amount: number
     pending_amount: number
@@ -144,6 +153,20 @@ export interface ProviderIncomeData {
     month_order_count: number
   }
   items: ProviderIncomeItem[]
+}
+
+export interface ProviderWithdrawal {
+  withdrawal_no: string
+  amount: number
+  status: 'submitting' | 'processing' | 'unknown' | 'succeeded' | 'failed' | 'attention'
+  status_label: string
+  bank_card_masked: string
+  bank_name: string
+  cash_type: string
+  provider_fee_amount: number
+  platform_fee_amount: number | null
+  created_at: string
+  last_queried_at: string | null
 }
 
 export interface ProviderOnlineSession {
@@ -299,6 +322,8 @@ export interface ProviderReceivingAccount {
   audit_status: string
   card_status: string
   settlement_status: string
+  cash_status: string
+  automatic_settlement_disabled: boolean | null
   channel_checked_at: string | null
   can_edit: boolean
   can_clear: boolean

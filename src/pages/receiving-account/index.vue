@@ -108,7 +108,7 @@
           <view v-if="account.can_refresh" class="channel-checks">
             <view class="channel-check"><text>本人提现卡</text><text :class="{ 'check-ready': account.card_status === 'S' }">{{ account.card_status === 'S' ? '已确认' : account.card_status === 'F' ? '未通过，请核实' : '待核实' }}</text></view>
             <view class="channel-check"><text>手动提现配置</text><text :class="{ 'check-ready': account.cash_status === 'S' }">{{ account.cash_status === 'S' ? '已确认' : account.cash_status === 'F' ? '未通过，请核实' : '待核实' }}</text></view>
-            <view class="channel-check"><text>自动结算</text><text :class="{ 'check-ready': account.automatic_settlement_disabled === true }">{{ account.automatic_settlement_disabled === true ? '已核验关闭' : account.automatic_settlement_disabled === false ? '仍开启，需关闭' : '关闭状态待核实' }}</text></view>
+            <view class="channel-check"><text>自动结算</text><text :class="{ 'check-ready': account.automatic_settlement_disabled === true }">{{ account.automatic_settlement_disabled === true ? '按未开启处理' : account.automatic_settlement_disabled === false ? '仍开启，需关闭' : '关闭状态待核实' }}</text></view>
           </view>
           <button v-if="account.can_refresh" class="secondary-button" :disabled="busy" :loading="refreshing" @tap="refresh">{{ refreshing ? '正在查询渠道…' : '刷新渠道状态' }}</button>
           <text class="helper">各项核验及授权满足条件后才可提现。订单分账核验后先计入达人余额，再由你主动申请提现；开通本身不代表银行卡已到账。</text>

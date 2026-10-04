@@ -32,5 +32,7 @@ assert.ok(!/setStorage|localStorage|sessionStorage/.test(source), 'private form 
 assert.ok(source.includes('onUnload(clearSensitiveInputs)'))
 assert.ok(source.includes("account.cash_status === 'F' ? '未通过，请核实' : '待核实'"))
 assert.ok(source.includes("account.automatic_settlement_disabled === false ? '仍开启，需关闭' : '关闭状态待核实'"))
+assert.ok(source.includes("account.automatic_settlement_disabled === true ? '按未开启处理'"))
+assert.ok(!source.includes('已核验关闭'), 'omitted settlement configuration is a platform policy, not channel confirmation')
 assert.ok(!source.includes('资料已提交渠道，如需换卡、更正或注销，请联系客服。'), 'use server copy instead of assuming every locked form has been submitted')
 console.log('PASS receiving account native route, styles, controls, image URL and no local form persistence')

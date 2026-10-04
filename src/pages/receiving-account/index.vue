@@ -42,7 +42,7 @@
           <text class="summary-line">{{ account.bank_name }} · {{ account.bank_card_masked }}</text>
           <text class="helper">{{ account.bank_province }} {{ account.bank_city }}</text>
           <text class="helper">联系电话 {{ account.mobile_masked }}</text>
-          <text v-if="!account.can_edit" class="helper">资料已提交渠道，如需换卡、更正或注销，请联系客服。</text>
+          <text v-if="!account.can_edit" class="helper">{{ account.collection_notice }}</text>
         </view>
 
         <template v-if="account.identity_verified && account.can_edit">
@@ -105,8 +105,13 @@
           </template>
           <text v-else-if="!account.onboarding_enabled && !account.can_refresh" class="helper">平台尚未启用渠道开户。资料已安全保存，不会自动提交，请联系平台完成配置。</text>
           <text v-else class="helper">{{ account.channel_notice }}</text>
+          <view v-if="account.can_refresh" class="channel-checks">
+            <view class="channel-check"><text>本人提现卡</text><text :class="{ 'check-ready': account.card_status === 'S' }">{{ account.card_status === 'S' ? '已确认' : account.card_status === 'F' ? '未通过，请核实' : '待核实' }}</text></view>
+            <view class="channel-check"><text>手动提现配置</text><text :class="{ 'check-ready': account.cash_status === 'S' }">{{ account.cash_status === 'S' ? '已确认' : account.cash_status === 'F' ? '未通过，请核实' : '待核实' }}</text></view>
+            <view class="channel-check"><text>自动结算</text><text :class="{ 'check-ready': account.automatic_settlement_disabled === true }">{{ account.automatic_settlement_disabled === true ? '已核验关闭' : account.automatic_settlement_disabled === false ? '仍开启，需关闭' : '关闭状态待核实' }}</text></view>
+          </view>
           <button v-if="account.can_refresh" class="secondary-button" :disabled="busy" :loading="refreshing" @tap="refresh">{{ refreshing ? '正在查询渠道…' : '刷新渠道状态' }}</button>
-          <text class="helper">订单分账核验后先计入达人余额，再由你主动申请提现。旧账户需平台关闭汇付自动结算；开通本身不代表银行卡已到账。</text>
+          <text class="helper">各项核验及授权满足条件后才可提现。订单分账核验后先计入达人余额，再由你主动申请提现；开通本身不代表银行卡已到账。</text>
         </view>
         <text v-if="formError" class="form-error" role="alert">{{ formError }}</text>
         <button v-if="account.can_clear" class="clear-button" :disabled="busy" :loading="clearing" hover-class="dz-pressed" @tap="confirmClear">清除已保存的收款资料</button>
@@ -223,6 +228,7 @@ onUnload(clearSensitiveInputs)
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
 .receiving-page{min-height:100vh;background:#f3f7f8}
+.channel-checks{margin-top:20rpx;padding:8rpx 20rpx;border-radius:18rpx;background:#f5f8f9}.channel-check{display:flex;align-items:center;justify-content:space-between;gap:16rpx;flex-wrap:wrap;padding:14rpx 0;font-size:24rpx;line-height:1.5;color:#657485}.check-ready{color:#16754b}
 .status-badge.badge-ready{background:#e2f5ea;color:#16754b}.channel-card{margin-top:24rpx}.date-field{gap:8rpx;overflow:hidden}
 .page-title{font-size:31rpx;font-weight:650}.head-spacer{width:80rpx}.back-button{display:flex;width:80rpx;min-height:88rpx;align-items:center;justify-content:flex-start;margin:0;padding:0;border:0;background:transparent;font-size:52rpx;line-height:1}.back-button::after{border:0}
 .receiving-content{padding-top:16rpx;padding-bottom:calc(48rpx + env(safe-area-inset-bottom))}

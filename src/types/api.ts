@@ -235,6 +235,12 @@ export interface ProviderScheduleDay {
 }
 
 export interface ProviderManagedOrder {
+  provider_contact_initiated_at: string | null
+  departure_contact_confirmed_at: string | null
+  fulfillment_review_required: boolean
+  completion_longitude: string | null
+  completion_latitude: string | null
+  completion_location_accuracy_m: string | null
   public_id: string
   order_no: string
   status: string

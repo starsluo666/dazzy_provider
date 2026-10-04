@@ -16,6 +16,8 @@
     "test:provider-setup:mp": "node tests/providerSetupMp.test.cjs",
     "test:receiving-account:mp": "node tests/receivingAccountMp.test.cjs",
     "test:income-withdrawal": "node tests/incomeWithdrawal.test.cjs",
+    "test:order-fulfillment": "node tests/orderFulfillment.test.cjs",
+    "test:orders:mp": "node tests/ordersMp.test.cjs",
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {

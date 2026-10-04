@@ -2,111 +2,92 @@
   <view class="dz-page dz-page--tabbed dz-management-page provider-orders-page">
     <view class="dz-sticky-head">
       <view class="dz-safe-top" />
-      <header class="page-head dz-container">
-        <view class="head-spacer" aria-hidden="true" />
-        <strong class="strong-text">达人订单</strong>
-        <button class="refresh" aria-label="刷新订单" :disabled="loading" hover-class="dz-pressed" @tap="load">
-          <image src="/static/icons/refresh.svg" mode="aspectFit" aria-hidden="true" />
+      <view class="page-head dz-container">
+        <view class="head-spacer" />
+        <text class="page-title">达人订单</text>
+        <button class="refresh" aria-label="刷新订单" :disabled="loading || !!busyOrderNo" hover-class="dz-pressed" @tap="load">
+          <image class="refresh-icon" src="/static/icons/refresh.svg" mode="aspectFit" />
         </button>
-      </header>
+      </view>
     </view>
-
     <scroll-view scroll-x class="tabs" :show-scrollbar="false">
       <view class="tab-row">
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          :aria-label="`${tab.label}${tab.count ? `，${tab.count}单` : ''}`"
-          :class="{ active: activeTab === tab.key }"
-          class="dz-tappable"
-          hover-class="dz-pressed"
-          @tap="activeTab = tab.key"
-        >
-          {{ tab.label }}<text v-if="tab.count">{{ tab.count }}</text>
+        <button v-for="tab in tabs" :key="tab.key" class="tab-button"
+          :class="{ 'tab-active': activeTab === tab.key }" :aria-label="`${tab.label}，${tab.count}单`"
+          hover-class="dz-pressed" @tap="activeTab = tab.key">
+          <text>{{ tab.label }}</text><text v-if="tab.count" class="tab-count">{{ tab.count }}</text>
         </button>
       </view>
     </scroll-view>
-
-    <main class="dz-container order-content">
+    <view class="dz-container order-content">
       <view v-if="!loading && !error" class="list-context">
-        <view>
-          <text>当前视图</text>
-          <strong class="strong-text">{{ activeLabel }}</strong>
-        </view>
-        <text>{{ visibleOrders.length }} 笔订单</text>
+        <text class="list-title">{{ activeLabel }}</text><text class="list-count">{{ visibleOrders.length }} 笔订单</text>
       </view>
       <NetworkState v-if="loading" message="正在加载达人订单…" />
-      <NetworkState
-        v-else-if="error"
-        :message="error"
-        action-text="重新加载"
-        @action="load"
-      />
-      <section v-else-if="!visibleOrders.length" class="empty-state">
-        <view class="empty-icon" aria-hidden="true">
-          <image src="/static/tabbar/order-active.svg" mode="aspectFit" />
+      <NetworkState v-else-if="error" :message="error" action-text="重新加载" @action="load" />
+      <view v-else-if="!visibleOrders.length" class="empty-state">
+        <view class="empty-icon"><image class="empty-image" src="/static/tabbar/order-active.svg" mode="aspectFit" /></view>
+        <text class="empty-title">暂无{{ activeLabel }}订单</text>
+        <text class="empty-copy">新的订单和履约进度会出现在这里。</text>
+      </view>
+      <view v-for="order in (loading || error ? [] : visibleOrders)" :key="order.order_no" class="order-card">
+        <view class="card-header">
+          <text class="order-status" :class="'tone-' + statusTone(order.status)">{{ statusLabel(order.status) }}</text>
+          <button class="detail-link" aria-label="查看订单详情" hover-class="dz-pressed" @tap="openDetail(order)">订单详情 ›</button>
         </view>
-        <strong class="strong-text">暂无{{ activeLabel }}订单</strong>
-        <text>新的订单和履约进度会出现在这里。</text>
-      </section>
-      <template v-else>
-        <section v-for="order in visibleOrders" :key="order.order_no" class="order-card dz-tappable" hover-class="dz-pressed" @tap="openDetail(order)">
-          <header>
-            <view class="order-status" :class="statusTone(order.status)"><i :class="statusTone(order.status)" />{{ statusLabel(order.status) }}</view>
-            <view class="order-number">
-              <text>{{ order.order_no }}</text>
-              <button aria-label="查看订单详情" @tap.stop="openDetail(order)">详情 ›</button>
-            </view>
-          </header>
-
-          <view class="order-main">
-            <view class="customer-avatar">{{ (order.customer_name || '用户').slice(0, 1) }}</view>
-            <view class="order-copy">
-              <strong class="strong-text">{{ order.customer_name || '预约用户' }} · {{ order.service_name }}</strong>
-              <view class="meta-line"><image src="/static/icons/calendar.svg" mode="aspectFit" /><text>{{ timeRange(order.starts_at, order.ends_at) }}</text></view>
-              <view class="meta-line"><image src="/static/icons/location.svg" mode="aspectFit" /><text>{{ addressLabel(order) }}</text></view>
-              <view class="meta-line"><image src="/static/icons/phone.svg" mode="aspectFit" /><text>{{ order.contact_name }}{{ order.contact_gender_label }} {{ order.contact_phone_display }}</text></view>
-            </view>
-            <view class="amount">
-              <small>订单金额</small>
-              <strong class="strong-text">¥{{ money(order.payable_amount) }}</strong>
+        <view class="customer-row" @tap="openDetail(order)">
+          <view class="customer-avatar">{{ (order.customer_name || '用户').slice(0, 1) }}</view>
+          <view class="customer-info">
+            <text class="service-name">{{ order.service_name }}</text>
+            <text class="customer-name">{{ order.customer_name || '预约用户' }}</text>
+          </view>
+          <view class="amount">
+            <text class="amount-caption">订单金额</text><text class="amount-value">¥{{ money(order.payable_amount) }}</text>
+          </view>
+        </view>
+        <view class="order-meta">
+          <view class="meta-line"><image class="meta-icon" src="/static/icons/calendar.svg" mode="aspectFit" /><text class="meta-text meta-time">{{ timeRange(order.starts_at, order.ends_at) }}</text></view>
+          <view class="meta-line"><image class="meta-icon" src="/static/icons/location.svg" mode="aspectFit" /><text class="meta-text">{{ addressLabel(order) }}</text></view>
+          <view class="meta-line contact-line">
+            <image class="meta-icon" src="/static/icons/phone.svg" mode="aspectFit" />
+            <view class="contact-info">
+              <text class="contact-person">{{ order.contact_name }}{{ order.contact_gender_label }} ·</text>
+              <view class="contact-phone-group">
+                <text class="contact-number">{{ order.contact_phone_display }}</text>
+                <button v-if="canContactOrder(order)" class="contact-button" aria-label="联系用户" :disabled="!!busyOrderNo"
+                  :class="{ 'button-disabled': !!busyOrderNo }" hover-class="dz-pressed" @tap="contactCustomer(order)">
+                  <text class="contact-button-label">{{ contacting && busyOrderNo === order.order_no ? '联系中' : '联系' }}</text>
+                </button>
+              </view>
             </view>
           </view>
-
-          <view v-if="order.note" class="note">备注：{{ order.note }}</view>
-          <button
-            v-if="order.arrival_photo_url"
-            class="evidence"
-            aria-label="查看集合地点照片"
-            @tap.stop="previewEvidence(order.arrival_photo_url)"
-          >
-            <image :src="order.arrival_photo_url" mode="aspectFill" />
-            <view>
-              <strong class="strong-text">集合地点照片</strong>
-              <text>{{ evidenceTime(order) }}</text>
-            </view>
-            <b>查看 ›</b>
-          </button>
-
-          <footer>
-            <view class="progress-copy">
-              <strong class="strong-text">{{ nextStepTitle(order) }}</strong>
-              <text :class="{ expired: isExpired(order) }">{{ nextStepCopy(order) }}</text>
-            </view>
-            <button
-              v-if="actionLabel(order)"
-              :class="{ outline: order.status === 'departed' && !order.arrival_photo_url }"
-              :disabled="isActionDisabled(order)"
-              hover-class="dz-pressed"
-              @tap.stop="performAction(order)"
-            >
-              {{ busyOrderNo === order.order_no ? busyLabel : actionLabel(order) }}
+        </view>
+        <view v-if="order.note" class="note">备注：{{ order.note }}</view>
+        <button v-if="order.arrival_photo_url" class="evidence" hover-class="dz-pressed" aria-label="查看集合照与记录"
+          @tap="previewEvidence(order.arrival_photo_url)">
+          <image class="evidence-photo" :src="order.arrival_photo_url" mode="aspectFill" />
+          <view class="evidence-copy"><text class="evidence-title">集合照已留存</text><text class="evidence-time">{{ evidenceTime(order) }}</text></view>
+          <text class="evidence-link">查看 ›</text>
+        </button>
+        <view v-else-if="order.status === 'departed'" class="evidence-placeholder">
+          <text class="evidence-title">到场后上传集合照</text><text class="evidence-time">需包含本人及现场环境，同时记录当前位置</text>
+        </view>
+        <view v-if="order.fulfillment_review_required" class="risk-notice">
+          <text class="risk-title">履约异常 · 待客服审核</text>
+          <text class="risk-copy">自动确认与分账已暂停，审核通过后恢复。</text>
+        </view>
+        <view class="card-footer">
+          <view class="progress-copy"><text class="progress-title">{{ nextStepTitle(order) }}</text><text class="progress-detail" :class="{ 'copy-warning': order.status === 'pending_acceptance' && isExpired(order) }">{{ nextStepCopy(order) }}</text></view>
+          <view v-if="actionLabel(order)" class="action-row">
+            <button class="order-button primary-button" :class="{ 'button-disabled': isActionDisabled(order) }"
+              :disabled="isActionDisabled(order)" hover-class="dz-pressed" @tap="performAction(order)">
+              {{ !contacting && busyOrderNo === order.order_no ? busyLabel : actionLabel(order) }}
             </button>
-          </footer>
-        </section>
-      </template>
-    </main>
-
+          </view>
+        </view>
+        <text class="order-number">{{ order.order_no }}</text>
+      </view>
+    </view>
     <ProviderTabBar active="orders" />
   </view>
 </template>
@@ -130,8 +111,9 @@ import { guardCurrentPage } from '@/services/session'
 import type { ProviderManagedOrder } from '@/types/api'
 import { formatAmount, formatBusinessDateTime, formatBusinessMonthDay, formatOrderTimeRange, getErrorMessage } from '@/utils/formatters'
 
+import { canContactOrder, contactOrderCustomer, confirmOrderDeparture, getFulfillmentLocation as getCurrentLocation } from '@/utils/orderFulfillment'
+
 type OrderTab = 'pending_acceptance' | 'pending_service' | 'in_progress' | 'support' | 'completed' | 'all'
-type LocationEvidence = { longitude: number; latitude: number; accuracy_m?: number }
 type SelectedPhoto = { path: string; file?: unknown }
 
 const orders = ref<ProviderManagedOrder[]>([])
@@ -140,6 +122,7 @@ const loading = ref(true)
 const error = ref('')
 const busyOrderNo = ref('')
 const busyLabel = ref('处理中…')
+const contacting = ref(false)
 const money = formatAmount
 function addressLabel(order: ProviderManagedOrder) {
   return [order.meeting_location_name, order.meeting_address]
@@ -215,8 +198,9 @@ function nextStepTitle(order: ProviderManagedOrder) {
   return '订单履约记录'
 }
 function nextStepCopy(order: ProviderManagedOrder) {
+  if (order.fulfillment_review_required) return '履约时间需客服核实，自动确认和分账已暂停'
   if (order.status === 'pending_acceptance') return acceptanceCopy(order)
-  if (order.status === 'pending_service') return `服务时间 ${shortDate(order.starts_at)}`
+  if (order.status === 'pending_service') return order.provider_contact_initiated_at ? '出发前请确认已与用户核实订单' : '请先联系用户，核实订单情况'
   if (order.status === 'departed' && !order.arrival_photo_url) return '抵达集合地点后上传现场照片'
   if (order.status === 'departed') return '可与用户核对后开始服务'
   if (order.status === 'in_service') return '服务结束后提交完成，等待用户确认'
@@ -239,19 +223,6 @@ function updateOrder(updated: ProviderManagedOrder) {
 function confirmAction(title: string, content: string) {
   return new Promise<boolean>((resolve) => {
     uni.showModal({ title, content, success: (result) => resolve(result.confirm), fail: () => resolve(false) })
-  })
-}
-function getCurrentLocation() {
-  return new Promise<LocationEvidence>((resolve, reject) => {
-    uni.getLocation({
-      type: 'gcj02',
-      success: (result) => resolve({
-        longitude: Number(result.longitude),
-        latitude: Number(result.latitude),
-        ...(typeof result.accuracy === 'number' ? { accuracy_m: result.accuracy } : {}),
-      }),
-      fail: () => reject(new Error('需要开启定位权限，才能留存集合照的上传位置。')),
-    })
   })
 }
 function chooseEvidencePhoto() {
@@ -303,9 +274,9 @@ async function accept(order: ProviderManagedOrder) {
   }
 }
 async function depart(order: ProviderManagedOrder) {
-  const confirmed = await confirmAction('确认出发', '确认后用户将看到“达人已出发”，请按约定前往集合地点。')
+  const confirmed = await confirmOrderDeparture(order)
   if (!confirmed) return
-  if (await runUpdate(order, '更新中…', () => departManagedProviderOrder(order.order_no))) {
+  if (await runUpdate(order, '更新中…', () => departManagedProviderOrder(order.order_no, true))) {
     activeTab.value = 'in_progress'
   }
 }
@@ -338,11 +309,25 @@ async function start(order: ProviderManagedOrder) {
   await runUpdate(order, '开始中…', () => startManagedProviderOrder(order.order_no))
 }
 async function complete(order: ProviderManagedOrder) {
-  const confirmed = await confirmAction('提交服务完成', '提交后将等待用户确认，请确保约定服务已经完成。')
+  const confirmed = await confirmAction('提交服务完成', '将获取并保存当前定位，核对订单时间。时间异常时会暂停自动确认与分账，由客服审核。请确认约定服务已完成。')
   if (!confirmed) return
-  await runUpdate(order, '提交中…', () => completeManagedProviderOrder(order.order_no))
+  await runUpdate(order, '定位并提交…', async () => completeManagedProviderOrder(order.order_no, await getCurrentLocation()))
+}
+async function contactCustomer(order: ProviderManagedOrder) {
+  if (busyOrderNo.value) return
+  busyOrderNo.value = order.order_no
+  contacting.value = true
+  try {
+    updateOrder((await contactOrderCustomer(order)).data)
+  } catch (reason) {
+    uni.showToast({ title: getErrorMessage(reason, '联系操作未完成，请重试'), icon: 'none' })
+  } finally {
+    contacting.value = false
+    busyOrderNo.value = ''
+  }
 }
 function performAction(order: ProviderManagedOrder) {
+  if (busyOrderNo.value) return
   if (order.status === 'pending_acceptance') return accept(order)
   if (order.status === 'pending_service') return depart(order)
   if (order.status === 'departed' && !order.arrival_photo_url) return uploadEvidence(order)
@@ -371,71 +356,76 @@ onShow(() => { if (guardCurrentPage()) load() })
 
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
-.provider-orders-page{min-height:100vh;background:linear-gradient(180deg,#f7fbfb 0,#f1f6f6 100%)}.page-head{position:sticky;z-index:10;top:0;display:flex;align-items:center;justify-content:space-between;height:92rpx;background:$dz-surface-glass-strong}.head-spacer,.page-head>button{width:88rpx;height:88rpx;flex:0 0 88rpx}.page-head>button{display:flex;align-items:center;justify-content:center;margin:0;padding:0;border:0;background:transparent}.page-head button::after,.tabs button::after,.order-card button::after{display:none}.page-head .strong-text{font-size:31rpx;letter-spacing:-.015em}.page-head .refresh image{width:38rpx;height:38rpx}.tabs{position:sticky;z-index:9;top:calc(92rpx + env(safe-area-inset-top));height:84rpx;background:$dz-surface-glass-strong;white-space:nowrap}.tab-row{display:flex;min-width:846rpx;height:84rpx;align-items:center;gap:8rpx;padding:8rpx 24rpx 12rpx}.tab-row button{min-width:126rpx;height:58rpx;margin:0;padding:0 14rpx;border:0;border-radius:29rpx;color:$dz-text-secondary;background:transparent;font-size:20rpx;line-height:58rpx}.tab-row button.active{color:$dz-brand-deep;background:$dz-brand-soft;font-weight:750}.tab-row text{display:inline-block;min-width:28rpx;margin-left:6rpx;border-radius:14rpx;color:#fff;background:$dz-orange;font-size:16rpx;line-height:28rpx}.order-content{padding-top:22rpx;padding-bottom:50rpx}.empty-state{display:flex;min-height:600rpx;flex-direction:column;align-items:center;justify-content:center;color:$dz-text-secondary;text-align:center}.empty-icon{display:flex;align-items:center;justify-content:center;width:108rpx;height:108rpx;border-radius:30rpx;background:$dz-brand-soft}.empty-icon image{width:60rpx;height:60rpx}.empty-state .strong-text{margin-top:24rpx;color:$dz-text-primary;font-size:28rpx}.empty-state text{margin-top:10rpx;font-size:20rpx}.order-card{overflow:hidden;margin-bottom:20rpx;padding:0 22rpx;border:1rpx solid rgba(218,229,230,.92);border-radius:26rpx;background:rgba(255,255,255,.97);box-shadow:$dz-shadow-soft}.order-card>header{display:flex;align-items:center;justify-content:space-between;height:74rpx;border-bottom:1rpx solid $dz-border-subtle}.order-status{display:flex;align-items:center;font-size:22rpx;font-weight:750}.order-card>header i{width:14rpx;height:14rpx;margin-right:9rpx;border-radius:50%}.order-card>header i.orange{background:#ff7438}.order-card>header i.cyan{background:$dz-brand-primary}.order-card>header i.green{background:#4fbd70}.order-card>header i.gray{background:$dz-text-tertiary}.order-number{display:flex;align-items:center;gap:10rpx}.order-number>text{color:$dz-text-tertiary;font-size:16rpx}.order-number>button{height:46rpx;margin:0;padding:0 8rpx;border:0;color:$dz-brand-deep;background:transparent;font-size:18rpx;line-height:46rpx}.order-main{display:flex;align-items:flex-start;padding:24rpx 0 22rpx}.customer-avatar{display:flex;width:84rpx;height:96rpx;flex:none;align-items:center;justify-content:center;border-radius:19rpx;color:$dz-brand-deep;background:$dz-brand-soft;font-size:31rpx;font-weight:700}.order-copy{display:flex;min-width:0;gap:8rpx;margin-left:16rpx;flex:1;flex-direction:column}.order-copy .strong-text{font-size:23rpx;letter-spacing:-.01em}.meta-line{display:flex;min-width:0;align-items:center}.meta-line image{width:24rpx;height:24rpx;flex:none;margin-right:7rpx;opacity:.82}.meta-line text{overflow:hidden;color:$dz-text-secondary;font-size:18rpx;text-overflow:ellipsis;white-space:nowrap}.amount{display:flex;align-items:flex-end;gap:8rpx;margin-left:10rpx;flex-direction:column}.amount small{color:$dz-text-tertiary;font-size:16rpx}.amount .strong-text{color:$dz-price-primary;font-size:28rpx;letter-spacing:-.02em}.note{margin-bottom:18rpx;padding:13rpx 16rpx;border-radius:12rpx;color:$dz-text-secondary;background:#f7f9fa;font-size:18rpx}.evidence{display:flex;align-items:center;width:100%;min-height:90rpx;margin:0 0 16rpx;padding:12rpx;border:0;border-radius:16rpx;background:#f1fbfa;text-align:left}.evidence image{width:70rpx;height:70rpx;flex:none;border-radius:12rpx}.evidence view{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx;margin-left:14rpx}.evidence .strong-text{font-size:20rpx}.evidence text{color:$dz-text-secondary;font-size:17rpx}.evidence b{color:$dz-brand-deep;font-size:18rpx;font-weight:650}.order-card>footer{display:flex;align-items:center;justify-content:space-between;min-height:116rpx;border-top:1rpx solid $dz-border-subtle}.progress-copy{display:flex;min-width:0;gap:5rpx;padding:12rpx 10rpx 12rpx 0;flex:1;flex-direction:column}.progress-copy .strong-text{font-size:19rpx}.progress-copy text{color:$dz-text-secondary;font-size:17rpx}.progress-copy text.expired{color:#e7653d}.order-card>footer button{min-width:176rpx;height:76rpx;margin:0;padding:0 24rpx;border:0;border-radius:$dz-radius-control;color:#fff;background:$dz-brand;box-shadow:$dz-shadow-control;font-size:20rpx;line-height:76rpx;transition:transform $dz-duration-fast $dz-ease-out,opacity $dz-duration-fast ease}.order-card>footer button:active{opacity:.78;transform:scale(.97)}.order-card>footer button[disabled]{opacity:.45;box-shadow:none}.order-card>footer button.outline{border:1rpx solid $dz-brand-primary;color:$dz-brand-deep;background:#fff;box-shadow:none}
-
-.provider-orders-page { background: radial-gradient(circle at 90% 0, rgba(81,220,216,.15) 0, rgba(81,220,216,0) 330rpx), linear-gradient(180deg,#f6fbfb 0,#f1f6f6 100%); }
-.page-head { border-bottom: 1rpx solid rgba(214,230,231,.55); }
-.tabs { border-bottom: 1rpx solid rgba(210,226,227,.72); box-shadow: 0 9rpx 24rpx rgba(29,70,74,.04); }
-.tab-row { gap: 10rpx; }
-.tab-row button { border: 1rpx solid transparent; transition: color $dz-duration-fast ease, background $dz-duration-fast ease, transform $dz-duration-fast $dz-ease-out; }
-.tab-row button.active { border-color: rgba(17,193,196,.14); background: rgba(255,255,255,.92); box-shadow: 0 6rpx 18rpx rgba(25,75,79,.07); }
-.list-context { display: flex; align-items: flex-end; justify-content: space-between; margin: 2rpx 4rpx 18rpx; }
-.list-context>view { display: flex; gap: 4rpx; flex-direction: column; }
-.list-context view>text { color: $dz-text-tertiary; font-size: 16rpx; }
-.list-context .strong-text { font-size: 27rpx; letter-spacing: -.015em; }
-.list-context>text { padding: 8rpx 13rpx; border: 1rpx solid rgba(17,193,196,.1); border-radius: 999rpx; color: $dz-brand-deep; background: rgba(230,249,248,.72); font-size: 17rpx; }
-.order-card { margin-bottom: 22rpx; border-color: rgba(214,226,227,.9); border-radius: 31rpx; background: #fff; box-shadow: 0 2rpx 2rpx rgba(23,57,61,.025), 0 16rpx 42rpx rgba(27,71,75,.075); }
-.order-card>header { height: 78rpx; }
-.order-status { padding: 8rpx 13rpx; border-radius: 999rpx; font-size: 19rpx; }
-.order-status.orange { color: #b95725; background: #fff1e8; }
-.order-status.cyan { color: $dz-brand-deep; background: $dz-brand-pale; }
-.order-status.green { color: #287a4b; background: #eaf8ef; }
-.order-status.gray { color: #697679; background: #f0f4f4; }
-.order-card>header i { width: 11rpx; height: 11rpx; margin-right: 8rpx; }
-.customer-avatar { border: 2rpx solid rgba(255,255,255,.92); border-radius: 23rpx; box-shadow: 0 9rpx 23rpx rgba(24,83,87,.09); }
-.order-copy .strong-text { font-size: 24rpx; }
-.amount { min-width: 112rpx; padding: 10rpx 12rpx; border-radius: 17rpx; background: #fff7ef; }
-.amount .strong-text { font-size: 27rpx; }
-.note { border: 1rpx solid rgba(220,228,229,.7); border-radius: 16rpx; background: #f8fafa; }
-.evidence { border: 1rpx solid rgba(17,193,196,.11); border-radius: 19rpx; }
-.order-card>footer { margin: 0 -22rpx; padding: 0 22rpx; border-top-color: rgba(218,229,230,.75); background: #fbfdfd; }
-.order-card>footer button { border-radius: 999rpx; background: $dz-gradient-brand; }
-.order-card>footer button.outline { background: #fff; }
-.provider-orders-page { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif; }
-.page-head .strong-text { font-size: 32rpx; line-height: 1.15; }
-.tab-row button { font-size: 21rpx; font-weight: 560; }
-.tab-row text { font-variant-numeric: tabular-nums; font-weight: 700; }
-.list-context view>text { font-size: 17rpx; letter-spacing: .02em; }
-.list-context .strong-text { font-size: 28rpx; line-height: 1.15; }
-.list-context>text { font-variant-numeric: tabular-nums; }
-.order-status { font-size: 20rpx; font-weight: 700; line-height: 1.2; }
-.order-number>text { font-size: 17rpx; letter-spacing: .015em; }
-.order-number>button { font-size: 19rpx; }
-.order-copy .strong-text { font-size: 25rpx; line-height: 1.28; }
-.meta-line text { font-size: 19rpx; line-height: 1.35; }
-.amount small { font-size: 17rpx; }
-.amount .strong-text { font-size: 30rpx; line-height: 1; font-variant-numeric: tabular-nums; }
-.progress-copy .strong-text { font-size: 20rpx; line-height: 1.25; }
-.progress-copy text { font-size: 18rpx; line-height: 1.45; }
-.order-card>footer button { font-size: 21rpx; font-weight: 700; }
-/* #ifdef H5 */
-.page-head,.tabs{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
-@media (prefers-reduced-motion: reduce) {
-  .tab-row button, .order-card>footer button { transition: none; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .page-head, .tabs { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
-}
-/* #endif */
-
-/* 达人订单重设计：完整展示全部筛选，放大任务信息，收敛装饰层。 */
-.provider-orders-page{background:linear-gradient(180deg,#edfafa 0,#f5f9f9 350rpx,#f2f6f6 100%)}
-.page-head{height:100rpx;border-bottom:0;background:rgba(248,252,252,.95)}.head-spacer,.page-head>button{width:92rpx;height:84rpx;flex-basis:92rpx}.page-head .strong-text{font-size:34rpx;letter-spacing:0}.page-head .refresh image{width:42rpx;height:42rpx}
-.tabs{top:calc(100rpx + env(safe-area-inset-top));height:94rpx;border-bottom:1rpx solid rgba(214,230,231,.58);background:rgba(248,252,252,.95);box-shadow:0 10rpx 26rpx rgba(29,70,74,.045)}.tab-row{display:grid;width:100%;min-width:0;height:94rpx;gap:4rpx;padding:9rpx 18rpx 11rpx;grid-template-columns:repeat(6,minmax(0,1fr))}.tab-row button{min-width:0;width:100%;height:70rpx;padding:0 2rpx;border:0;border-radius:18rpx;font-size:21rpx;font-weight:600;line-height:70rpx}.tab-row button.active{border:0;color:$dz-brand-deep;background:rgba(221,248,247,.92);box-shadow:none}.tab-row text{min-width:25rpx;height:25rpx;margin-left:4rpx;border-radius:13rpx;font-size:15rpx;line-height:25rpx;vertical-align:2rpx}
-.order-content{padding-top:24rpx;padding-bottom:58rpx}.list-context{align-items:center;margin:0 4rpx 18rpx}.list-context>view{gap:0}.list-context view>text{display:none}.list-context .strong-text{font-size:30rpx}.list-context>text{padding:0;border:0;background:transparent;font-size:21rpx;font-variant-numeric:tabular-nums}
-.order-card{margin-bottom:22rpx;padding:0 24rpx;border:1rpx solid rgba(218,229,230,.88);border-radius:28rpx;background:rgba(255,255,255,.97);box-shadow:$dz-shadow}.order-card>header{height:82rpx}.order-status{padding:6rpx 12rpx;font-size:22rpx}.order-number{gap:8rpx}.order-number>text{font-size:18rpx}.order-number>button{height:58rpx;padding:0 6rpx;font-size:22rpx;line-height:58rpx}
-.order-main{padding:26rpx 0 24rpx}.customer-avatar{width:92rpx;height:104rpx;border:0;border-radius:24rpx;font-size:34rpx;box-shadow:none}.order-copy{gap:10rpx;margin-left:18rpx}.order-copy .strong-text{font-size:27rpx;line-height:1.35}.meta-line image{width:28rpx;height:28rpx;margin-right:8rpx}.meta-line text{font-size:21rpx;line-height:1.45}.amount{min-width:120rpx;gap:8rpx;margin-left:10rpx;padding:12rpx 14rpx;border-radius:20rpx;background:#fff5ed}.amount small{font-size:18rpx}.amount .strong-text{font-size:32rpx;line-height:1;white-space:nowrap}
-.note{margin-bottom:20rpx;padding:16rpx 18rpx;border:0;border-radius:18rpx;background:#f3f7f7;font-size:21rpx;line-height:1.5}.evidence{min-height:104rpx;margin-bottom:18rpx;padding:14rpx;border-radius:20rpx}.evidence image{width:78rpx;height:78rpx;border-radius:15rpx}.evidence view{gap:6rpx;margin-left:16rpx}.evidence .strong-text{font-size:23rpx}.evidence text,.evidence b{font-size:20rpx}
-.order-card>footer{min-height:130rpx;margin:0 -24rpx;padding:0 24rpx;background:#fbfdfd}.progress-copy{gap:7rpx;padding-right:14rpx}.progress-copy .strong-text{font-size:23rpx}.progress-copy text{font-size:20rpx;line-height:1.45}.order-card>footer button{min-width:184rpx;height:82rpx;padding:0 24rpx;border-radius:24rpx;background:$dz-brand;font-size:23rpx;line-height:82rpx}
-.empty-state .strong-text{font-size:31rpx}.empty-state text{font-size:23rpx}
+.provider-orders-page { min-height: 100vh; background: #f3f7f7; color: $dz-text-primary; }
+.page-head { display: flex; align-items: center; justify-content: space-between; height: 100rpx; background: #f7fbfb; }
+.head-spacer, .refresh { width: 88rpx; height: 88rpx; flex: 0 0 88rpx; }
+.page-title { font-size: 34rpx; font-weight: 700; }
+.refresh { display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; background: transparent; }
+.refresh-icon { width: 40rpx; height: 40rpx; }
+.refresh::after, .tab-button::after, .detail-link::after, .evidence::after, .order-button::after, .contact-button::after { border: 0; }
+.tabs { position: sticky; z-index: 9; top: calc(100rpx + env(safe-area-inset-top)); background: #f7fbfb; border-bottom: 1rpx solid #e3eded; white-space: nowrap; }
+.tab-row { display: flex; align-items: center; padding: 8rpx 18rpx 12rpx; gap: 4rpx; }
+.tab-button { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 112rpx; height: 80rpx; margin: 0; padding: 0 4rpx; border-radius: 20rpx; background: transparent; color: $dz-text-secondary; font-size: 22rpx; font-weight: 500; line-height: 1.3; }
+.tab-active { color: $dz-brand-deep; background: $dz-brand-soft; font-weight: 700; }
+.tab-count { min-width: 24rpx; margin-left: 5rpx; padding: 2rpx 3rpx; border-radius: 10rpx; background: #e7eeee; color: #55686a; font-size: 17rpx; line-height: 1.2; }
+.tab-active .tab-count { background: #fff; color: $dz-brand-deep; }
+.order-content { padding-top: 26rpx; padding-bottom: 48rpx; }
+.list-context { display: flex; align-items: center; justify-content: space-between; margin: 0 4rpx 20rpx; }
+.list-title { font-size: 30rpx; font-weight: 700; }
+.list-count { color: $dz-text-secondary; font-size: 23rpx; }
+.order-card { overflow: hidden; margin-bottom: 24rpx; padding: 0 26rpx; border: 1rpx solid #e0e9e9; border-radius: 28rpx; background: #fff; box-shadow: 0 6rpx 20rpx rgba(22,57,62,.035); }
+.card-header { display: flex; align-items: center; justify-content: space-between; min-height: 88rpx; border-bottom: 1rpx solid #edf2f2; }
+.order-status { padding: 8rpx 14rpx; border-radius: 12rpx; font-size: 23rpx; font-weight: 600; line-height: 1.3; }
+.tone-orange { color: #aa5425; background: #fff2e8; }
+.tone-cyan { color: $dz-brand-deep; background: #e7f8f7; }
+.tone-green { color: #287b52; background: #eaf6ef; }
+.tone-gray { color: #687678; background: #f0f4f4; }
+.detail-link { display: flex; align-items: center; justify-content: flex-end; height: 88rpx; min-width: 150rpx; margin: 0; padding: 0; background: transparent; color: $dz-text-secondary; font-size: 23rpx; line-height: 1.3; }
+.customer-row { display: flex; align-items: center; gap: 18rpx; padding: 26rpx 0; }
+.customer-avatar { display: flex; align-items: center; justify-content: center; flex: none; width: 80rpx; height: 80rpx; border-radius: 24rpx; background: $dz-brand-soft; color: $dz-brand-deep; font-size: 32rpx; font-weight: 600; }
+.customer-info { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 6rpx; }
+.service-name { font-size: 30rpx; font-weight: 650; line-height: 1.4; }
+.customer-name { color: $dz-text-secondary; font-size: 23rpx; overflow-wrap: anywhere; }
+.amount { display: flex; flex-direction: column; align-items: flex-end; gap: 6rpx; flex-shrink: 0; }
+.amount-caption { color: $dz-text-secondary; font-size: 21rpx; }
+.amount-value { color: $dz-text-primary; font-size: 36rpx; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.order-meta { display: flex; flex-direction: column; gap: 16rpx; padding-bottom: 24rpx; }
+.meta-line { display: flex; align-items: flex-start; gap: 12rpx; }
+.meta-icon { width: 28rpx; height: 32rpx; flex: none; opacity: .8; }
+.meta-text { flex: 1; min-width: 0; font-size: 24rpx; line-height: 1.5; color: #5c6d73; overflow-wrap: anywhere; }
+.meta-time { color: #253a3e; font-weight: 500; }
+.contact-line { align-items: center; }
+.contact-info { display: flex; flex: 1; min-width: 0; align-items: center; flex-wrap: wrap; column-gap: 8rpx; color: #5c6d73; font-size: 24rpx; line-height: 1.5; }
+.contact-person { min-width: 0; overflow-wrap: anywhere; }
+.contact-phone-group { display: flex; align-items: center; gap: 12rpx; flex-shrink: 0; }
+.contact-number { white-space: nowrap; }
+/* Compact visible pill, with a larger transparent touch target. */
+.contact-button { display: flex; flex: none; align-items: center; justify-content: center; width: 52px; height: 44px; margin: -8px 0; padding: 0; background: transparent; line-height: 1; }
+.contact-button-label { display: flex; align-items: center; justify-content: center; width: 100%; height: 28px; border-radius: 8px; background: #e9f6f6; color: #087e87; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.note { padding: 16rpx 18rpx; margin-bottom: 20rpx; border-radius: 16rpx; background: #f5f8f8; color: $dz-text-secondary; font-size: 23rpx; line-height: 1.5; }
+.evidence { display: flex; align-items: center; width: 100%; min-height: 110rpx; margin: 0 0 22rpx; padding: 14rpx; border-radius: 18rpx; background: #f2f8f7; text-align: left; line-height: 1.4; }
+.evidence-photo { width: 80rpx; height: 80rpx; border-radius: 12rpx; flex: none; }
+.evidence-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 7rpx; margin: 0 14rpx; }
+.evidence-title { color: #23383c; font-size: 24rpx; font-weight: 600; }
+.evidence-time { color: $dz-text-secondary; font-size: 21rpx; line-height: 1.5; }
+.evidence-link { color: $dz-brand-deep; font-size: 23rpx; white-space: nowrap; }
+.evidence-placeholder { display: flex; flex-direction: column; gap: 8rpx; margin-bottom: 22rpx; padding: 20rpx; border-radius: 18rpx; background: #f2f8f7; }
+.risk-notice { display: flex; flex-direction: column; gap: 8rpx; padding: 18rpx; margin-bottom: 22rpx; border-radius: 16rpx; background: #fff5e8; }
+.risk-title { color: #985b19; font-size: 24rpx; font-weight: 600; }
+.risk-copy { color: #8e672f; font-size: 22rpx; line-height: 1.5; }
+.card-footer { padding: 22rpx 0 0; border-top: 1rpx solid #edf2f2; }
+.progress-copy { display: flex; flex-direction: column; gap: 8rpx; }
+.progress-title { font-size: 24rpx; font-weight: 600; line-height: 1.4; }
+.progress-detail { color: $dz-text-secondary; font-size: 22rpx; line-height: 1.5; }
+.copy-warning { color: #b45c30; }
+.action-row { display: flex; gap: 16rpx; margin-top: 22rpx; }
+.order-button { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 44px; margin: 0; padding: 18rpx 14rpx; border-radius: 20rpx; font-size: 15px; font-weight: 600; line-height: 1.4; box-sizing: border-box; }
+.primary-button { background: #079caa; color: #fff; }
+.button-disabled { opacity: .45; }
+.order-number { display: block; padding: 18rpx 0 22rpx; color: #8b989e; font-size: 19rpx; line-height: 1.4; }
+.empty-state { display: flex; min-height: 600rpx; flex-direction: column; align-items: center; justify-content: center; }
+.empty-icon { display: flex; align-items: center; justify-content: center; width: 108rpx; height: 108rpx; border-radius: 30rpx; background: $dz-brand-soft; }
+.empty-image { width: 60rpx; height: 60rpx; }
+.empty-title { margin-top: 24rpx; font-size: 30rpx; font-weight: 600; }
+.empty-copy { margin-top: 12rpx; color: $dz-text-secondary; font-size: 23rpx; }
 </style>

@@ -69,7 +69,7 @@
               <strong class="strong-text row-value">{{ order.contact_name }} {{ order.contact_gender_label }}</strong>
               <text class="phone-value">{{ order.contact_phone_display }}</text>
             </view>
-            <button class="mini-action dz-tappable" :disabled="phoneIsMasked" hover-class="dz-pressed" @tap="callCustomer">联系</button>
+            <button class="mini-action dz-tappable" :disabled="phoneIsMasked || busy" hover-class="dz-pressed" @tap="callCustomer">联系</button>
           </view>
           <view v-if="phoneIsMasked" class="privacy-tip">为保护用户隐私，接受订单后可查看完整电话与导航位置。</view>
         </section>
@@ -161,7 +161,7 @@ import { guardCurrentPage } from '@/services/session'
 import type { ProviderManagedOrder } from '@/types/api'
 import { formatAmount, formatBusinessDateTime, formatOrderTimeRange, getErrorMessage } from '@/utils/formatters'
 
-type LocationEvidence = { longitude: number; latitude: number; accuracy_m?: number }
+import { canContactOrder, contactOrderCustomer, confirmOrderDeparture, getFulfillmentLocation as getCurrentLocation } from '@/utils/orderFulfillment'
 type SelectedPhoto = { path: string; file?: unknown }
 type TimelineItem = { label: string; time?: string; copy?: string; done?: boolean; current?: boolean; danger?: boolean }
 
@@ -174,7 +174,7 @@ const busyLabel = ref('处理中…')
 const rejectVisible = ref(false)
 const money = formatAmount
 
-const phoneIsMasked = computed(() => !order.value?.contact_phone_display || order.value.contact_phone_display.includes('*'))
+const phoneIsMasked = computed(() => !order.value || !canContactOrder(order.value))
 const canNavigate = computed(() => Boolean(order.value?.meeting_longitude && order.value?.meeting_latitude))
 const showActionBar = computed(() => Boolean(order.value && actionLabel(order.value)))
 const actionDisabled = computed(() => Boolean(order.value?.status === 'pending_acceptance' && isExpired(order.value)))
@@ -200,10 +200,11 @@ const timeline = computed<TimelineItem[]>(() => {
     return rows
   }
   addMilestone(rows, '达人已接单', item.accepted_at)
+  addMilestone(rows, '达人已核实订单', item.departure_contact_confirmed_at)
   addMilestone(rows, '达人已出发', item.departed_at)
   addMilestone(rows, '已到达集合地点', item.arrival_photo_uploaded_at)
   addMilestone(rows, '服务已开始', item.service_started_at)
-  addMilestone(rows, '已提交服务完成', item.completion_submitted_at)
+  addMilestone(rows, item.completion_longitude != null ? '已提交完成并留存位置' : '已提交服务完成', item.completion_submitted_at)
   addMilestone(
     rows,
     item.auto_confirmed_at ? '系统已自动确认完成' : '用户已确认完成',
@@ -227,7 +228,8 @@ const timeline = computed<TimelineItem[]>(() => {
     completed: ['订单已完成', '本单履约流程已结束'],
     pending_support: ['等待平台处理', '请留意平台客服消息'],
   }[item.status]
-  if (next) rows.push({ label: next[0], copy: next[1], current: true })
+  if (item.fulfillment_review_required) rows.push({ label: '履约异常待审核', copy: '自动确认与分账已暂停，由客服核实后恢复。', current: true, danger: true })
+  else if (next) rows.push({ label: next[0], copy: next[1], current: true })
   return rows
 })
 
@@ -268,6 +270,7 @@ function acceptanceCopy(item: ProviderManagedOrder) {
   return minutes ? `剩余约 ${minutes} 分钟确认` : '接单时限已到，请联系客服'
 }
 function nextStepCopy(item: ProviderManagedOrder) {
+  if (item.fulfillment_review_required) return '履约异常待客服审核，自动确认与分账已暂停'
   if (item.status === 'pending_acceptance') return acceptanceCopy(item)
   if (item.status === 'pending_service') return '接受订单后，可查看完整电话与导航位置'
   if (item.status === 'departed' && !item.arrival_photo_url) return '抵达集合地点后，请上传现场照片'
@@ -287,19 +290,6 @@ function actionLabel(item: ProviderManagedOrder) {
 function confirmAction(title: string, content: string) {
   return new Promise<boolean>((resolve) => {
     uni.showModal({ title, content, success: (result) => resolve(result.confirm), fail: () => resolve(false) })
-  })
-}
-function getCurrentLocation() {
-  return new Promise<LocationEvidence>((resolve, reject) => {
-    uni.getLocation({
-      type: 'gcj02',
-      success: (result) => resolve({
-        longitude: Number(result.longitude),
-        latitude: Number(result.latitude),
-        ...(typeof result.accuracy === 'number' ? { accuracy_m: result.accuracy } : {}),
-      }),
-      fail: () => reject(new Error('需要开启定位权限，才能留存集合照的上传位置。')),
-    })
   })
 }
 function chooseEvidencePhoto() {
@@ -346,8 +336,9 @@ async function acceptOrder() {
   if (confirmed) await runUpdate('接单中…', () => acceptManagedProviderOrder(orderNo.value))
 }
 async function departOrder() {
-  const confirmed = await confirmAction('确认出发', '确认后用户将看到“达人已出发”，请按约定前往集合地点。')
-  if (confirmed) await runUpdate('更新中…', () => departManagedProviderOrder(orderNo.value))
+  if (!order.value || busy.value) return
+  const confirmed = await confirmOrderDeparture(order.value)
+  if (confirmed) await runUpdate('更新中…', () => departManagedProviderOrder(orderNo.value, true))
 }
 async function uploadEvidence() {
   if (busy.value) return
@@ -374,8 +365,8 @@ async function startOrder() {
   if (confirmed) await runUpdate('开始中…', () => startManagedProviderOrder(orderNo.value))
 }
 async function completeOrder() {
-  const confirmed = await confirmAction('提交服务完成', '提交后将等待用户确认，请确保约定服务已经完成。')
-  if (confirmed) await runUpdate('提交中…', () => completeManagedProviderOrder(orderNo.value))
+  const confirmed = await confirmAction('提交服务完成', '将获取并保存当前定位，核对订单时间。时间异常时会暂停自动确认与分账，由客服审核。请确认约定服务已完成。')
+  if (confirmed) await runUpdate('定位并提交…', async () => completeManagedProviderOrder(orderNo.value, await getCurrentLocation()))
 }
 function performPrimaryAction() {
   if (!order.value) return
@@ -395,9 +386,14 @@ async function confirmReject() {
   const updated = await runUpdate('提交中…', () => rejectManagedProviderOrder(orderNo.value))
   if (updated) rejectVisible.value = false
 }
-function callCustomer() {
-  if (!order.value || phoneIsMasked.value) return
-  uni.makePhoneCall({ phoneNumber: order.value.contact_phone_display })
+async function callCustomer() {
+  if (!order.value || phoneIsMasked.value || busy.value) return
+  busy.value = true
+  try {
+    order.value = (await contactOrderCustomer(order.value)).data
+  } catch (reason) {
+    uni.showToast({ title: getErrorMessage(reason, '联系操作未完成，请重试'), icon: 'none' })
+  } finally { busy.value = false }
 }
 function openNavigation() {
   if (!order.value || !canNavigate.value) return

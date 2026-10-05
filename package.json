@@ -13,6 +13,7 @@
     "test:legal": "node tests/legal.test.cjs",
     "test:security": "node tests/security.test.cjs",
     "test:provider-setup": "node tests/providerSetup.test.cjs",
+    "test:identity-upload": "node tests/identityUpload.test.cjs",
     "test:provider-setup:mp": "node tests/providerSetupMp.test.cjs",
     "test:receiving-account:mp": "node tests/receivingAccountMp.test.cjs",
     "test:income-withdrawal": "node tests/incomeWithdrawal.test.cjs",

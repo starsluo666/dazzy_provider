@@ -99,7 +99,7 @@
 
         <view class="privacy-card">
           <view class="privacy-title"><view class="lock-icon privacy-lock" /><text>隐私保护说明</text></view>
-          <text class="privacy-copy">认证材料使用私有存储，仅用于达人身份核验；公开页面只展示认证结果，不展示姓名、证件号码或原图。</text>
+          <text class="privacy-copy">新上传的身份证正反面自动添加“仅用于达人验证”水印。认证材料使用私有存储；公开页面只展示认证结果，不展示姓名、证件号码或原图。</text>
         </view>
       </template>
     </view>
@@ -207,7 +207,7 @@ function choosePhoto(key: PhotoKey) {
       }
       uploading[key] = true
       try {
-        const result = await uploadProviderIdentityPhoto(tempFilePaths[0], file)
+        const result = await uploadProviderIdentityPhoto(tempFilePaths[0], file, key)
         const idKey = `${key}_id` as keyof typeof form
         form[idKey] = result.data.id
         previews[key] = result.data.url

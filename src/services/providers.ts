@@ -54,9 +54,11 @@ export const saveProviderIdentity = (data: Record<string, unknown>) =>
 export const submitProviderIdentity = () =>
   request<DataResponse<ProviderIdentity>>('/providers/me/identity/submit/', { method: 'POST', data: {} })
 
-export const uploadProviderIdentityPhoto = (filePath: string, file?: unknown) =>
+export type IdentityPhotoKind = 'identity_front_photo' | 'identity_back_photo' | 'identity_face_photo'
+
+export const uploadProviderIdentityPhoto = (filePath: string, file?: unknown, kind: IdentityPhotoKind = 'identity_front_photo') =>
   uploadFile<DataResponse<{ id: string; url: string }>>(
-    '/media/provider-identities/', filePath, 'file', file,
+    '/media/provider-identities/', filePath, 'file', file, 30000, { kind },
   )
 
 export const getProviderProfile = () =>

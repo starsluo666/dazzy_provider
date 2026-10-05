@@ -10,6 +10,7 @@
     { "path": "pages/identity/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/provider-profile/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/services/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/training/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/schedule/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/orders/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/orders/detail", "style": { "navigationStyle": "custom" } },

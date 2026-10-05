@@ -23,12 +23,16 @@
           </view>
         </header>
 
-        <view v-if="!data.can_accept_orders">
+        <view v-if="showSetupCard">
           <ProviderSetupCard
             :data="data"
             @identity="openIdentity" @profile="openProviderProfile" @services="openServices"
           />
         </view>
+
+        <button v-if="data.training_required" class="training-entry dz-tappable" hover-class="dz-pressed" @tap="openTraining">
+          <view class="training-copy"><text class="training-title">首次接单学习</text><text class="training-description">阅读学习资料，通过考核后开启接单</text></view><text class="training-action">去学习 ›</text>
+        </button>
 
         <section class="online-hero" :class="{ offline: !data.is_online }">
           <view class="online-main">
@@ -147,6 +151,9 @@ import { formatAmount, getErrorMessage } from '@/utils/formatters'
 import { businessClock, businessDateKey, businessTimeParts } from '@/utils/businessTime'
 
 const data = ref<ProviderWorkbench | null>(null)
+const showSetupCard = computed(() => (data.value?.onboarding_blockers || []).some(
+  item => item !== '请先完成接单学习并通过考核',
+))
 const loading = ref(true)
 const error = ref('')
 const toggling = ref(false)
@@ -323,6 +330,7 @@ function openPending() {
 function openIdentity(){ uni.navigateTo({url:'/pages/identity/index'}) }
 function openProviderProfile(){ uni.navigateTo({url:'/pages/provider-profile/index'}) }
 function openServices(){ uni.navigateTo({url:'/pages/services/index'}) }
+function openTraining(){ uni.navigateTo({url:'/pages/training/index'}) }
 
 function confirmAlarm() {
   if (alarming.value) return
@@ -395,6 +403,15 @@ onShow(() => {
 onHide(stopNotificationPolling)
 onUnmounted(stopNotificationPolling)
 </script>
+
+<style lang="scss" scoped>
+.training-entry { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 112rpx; margin: 16rpx 0; padding: 24rpx; border: 1rpx solid #cbe7e7; border-radius: 24rpx; background: #fff; text-align: left; line-height: 1.5; }
+.training-entry::after { border: 0; }
+.training-copy { flex: 1; min-width: 0; }
+.training-title { display: block; color: #15232d; font-size: 29rpx; font-weight: 600; }
+.training-description { display: block; margin-top: 6rpx; color: #64767b; font-size: 24rpx; }
+.training-action { flex-shrink: 0; color: #087b80; font-size: 26rpx; font-weight: 600; white-space: nowrap; }
+</style>
 
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;

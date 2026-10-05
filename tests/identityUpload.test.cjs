@@ -51,7 +51,7 @@ async function main() {
     updateTokens: token => { access = token },
     handleSessionExpired: () => assert.fail('Session must not expire'),
   } }, { uni })
-  const { uploadProviderIdentityPhoto } = load('../src/services/providers.ts', { './http': http })
+  const { uploadProviderIdentityPhoto, uploadProviderLifestylePhoto, uploadProviderVideo } = load('../src/services/providers.ts', { './http': http })
   const file = { type: 'image/png' }
   for (const kind of ['identity_front_photo', 'identity_back_photo', 'identity_face_photo']) {
     const result = await uploadProviderIdentityPhoto('/tmp/synthetic.png', file, kind)
@@ -75,6 +75,13 @@ async function main() {
   await http.uploadFile('/media/provider-videos/', '/tmp/video.mp4', 'file', file, 120000)
   assert.equal(calls.at(-1).timeout, 120000)
   assert.equal(calls.at(-1).formData, undefined)
+  for (const upload of [uploadProviderLifestylePhoto, uploadProviderVideo]) {
+    const nativeFile = { type: '', name: 'wx_temp' }
+    await upload('blob:synthetic', { file: nativeFile, size: 100 })
+    assert.equal(calls.at(-1).file, nativeFile)
+    assert.equal(calls.at(-1).filePath, 'blob:synthetic')
+  }
+  assert.equal(calls.at(-1).timeout, 180000, 'video conversion retains its longer upload budget')
   serverError = true
   await assert.rejects(uploadProviderIdentityPhoto('/tmp/error.png'), /水印服务暂不可用/)
 

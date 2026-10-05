@@ -122,6 +122,7 @@ const icons = {
   featureService: '/static/icons/feature-service.svg',
 } as const
 const entries = [
+  { label: '接单学习', path: '/pages/training/index', icon: '/static/icons/check.svg' },
   { label: '消息中心', path: '/pages/messages/index', icon: '/static/tabbar/message.svg' },
   { label: '实名认证', path: '/pages/identity/index', icon: '/static/icons/check.svg' },
   { label: '达人资料', path: '/pages/provider-profile/index', icon: '/static/tabbar/profile.svg' },

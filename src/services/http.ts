@@ -123,7 +123,9 @@ export function uploadFile<T>(path: string, filePath: string, name = 'file', fil
       uni.uploadFile({
         url: `${API_BASE_URL}${path}`,
         filePath,
-        file,
+        // H5 pickers may wrap the native File; mini-programs use filePath.
+        // The server validates actual content and normalizes Apple media.
+        file: file && typeof file === 'object' && 'file' in file ? (file as { file: unknown }).file : file,
         name,
         formData,
         header: getAccessToken()

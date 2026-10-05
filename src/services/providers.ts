@@ -73,7 +73,7 @@ export const uploadProviderLifestylePhoto = (filePath: string, file?: unknown) =
   )
 
 export const uploadProviderVideo = (filePath: string, file?: unknown) =>
-  uploadFile<DataResponse<{ id: string; url: string }>>(
+  uploadFile<DataResponse<{ id: string; url: string; duration_ms: number }>>(
     '/media/provider-videos/', filePath, 'file', file, 180000,
   )
 

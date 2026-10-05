@@ -69,6 +69,8 @@ export interface ProviderWorkbench {
   pending_service_revision_count: number
   is_profile_complete: boolean
   can_accept_orders: boolean
+  training_required: boolean
+  training_passed_at: string | null
   onboarding_blockers: string[]
   service_city_code: string
   service_city_name: string
@@ -104,7 +106,7 @@ export interface ProviderIdentity {
   identity_rejection_reason: string
 }
 
-export interface ProviderMedia { id: string; type: 'image' | 'video'; url: string }
+export interface ProviderMedia { id: string; type: 'image' | 'video'; url: string; duration_ms?: number | null }
 
 export interface ProviderProfileData {
   media: ProviderMedia[]

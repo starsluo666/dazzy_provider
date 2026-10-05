@@ -21,7 +21,8 @@
 
         <section class="gallery-panel">
           <view class="panel-heading"><strong class="strong-text">照片与视频</strong><text>{{ media.length }}/9</text></view>
-          <text class="gallery-tip">第一张照片作为列表封面，左右调整展示顺序。最多9个素材，其中视频最多3个；照片≤8MB，MP4/MOV视频≤50MB。</text>
+          <text class="gallery-tip">第一张照片作为列表封面，左右调整展示顺序。最多9个素材，其中视频最多2个、每个不超过10秒；照片≤8MB，支持苹果 HEIC/HEIF；MP4/MOV视频≤50MB，上传后自动转为兼容格式。</text>
+          <text v-if="hasUnverifiedVideo" class="gallery-tip">旧视频尚未核验时长，下次提交资料前请移除并重新上传不超过10秒的视频。当前已发布的资料不会因此被删除。</text>
           <view class="gallery-grid">
             <!-- 小程序原生 button 复用后可能保留换位前的 disabled 状态，位置变化时重建卡片。 -->
             <view v-for="(item, index) in media" :key="`${item.id}-${index}`" class="gallery-item">
@@ -37,9 +38,9 @@
           </view>
           <view class="gallery-buttons">
             <button :disabled="mediaLocked || media.length >= 9" @tap="choosePhoto"><text>＋ 添加照片</text></button>
-            <button :disabled="mediaLocked || media.length >= 9 || videoCount >= 3" @tap="chooseVideo"><text>＋ 添加视频</text></button>
+            <button :disabled="mediaLocked || media.length >= 9 || videoCount >= 2" @tap="chooseVideo"><text>＋ 添加视频</text></button>
           </view>
-          <text v-if="uploading" class="gallery-tip">上传中，请稍候…</text>
+          <text v-if="uploading" class="gallery-tip">上传及格式处理中，请稍候，不要关闭页面…</text>
           <text v-if="saveAttempted && !media.length" class="field-error">请至少上传一张本人生活照作为封面</text>
         </section>
 
@@ -101,6 +102,7 @@ const media = ref<ProviderMedia[]>([])
 const data = ref<ProviderProfileData | null>(null)
 const mediaLocked = computed(() => uploading.value || saving.value || data.value?.review_status === 'pending')
 const videoCount = computed(() => media.value.filter(item => item.type === 'video').length)
+const hasUnverifiedVideo = computed(() => media.value.some(item => item.type === 'video' && !item.duration_ms))
 const form = reactive({
   display_name: '', bio: '', lifestyle_photo_id: null as string | null, service_city_code: '130400',
   service_city_name: '邯郸市', max_service_radius_km: 10,
@@ -153,13 +155,15 @@ function choosePhoto() {
   })
 }
 function chooseVideo() {
-  if (mediaLocked.value || media.value.length >= 9 || videoCount.value >= 3) return
+  if (mediaLocked.value || media.value.length >= 9 || videoCount.value >= 2) return
   if (!media.value.length) return uni.showToast({ title: '请先添加一张照片作为封面', icon: 'none' })
   uploading.value = true
   uni.chooseVideo({
-    sourceType: ['album', 'camera'], compressed: true,
+    sourceType: ['album', 'camera'], compressed: true, maxDuration: 10,
     success: async (selected) => {
       try {
+        if (!selected.tempFilePath) throw new Error('未获取到视频，请重新选择')
+        if (selected.duration > 10) throw new Error('每个视频不能超过10秒，请裁剪后重试')
         if (selected.size > 50 * 1024 * 1024) throw new Error('视频不能超过50MB')
         const uploaded = await uploadProviderVideo(selected.tempFilePath, (selected as unknown as { tempFile?: unknown }).tempFile)
         media.value.push({ ...uploaded.data, type: 'video' })
@@ -209,6 +213,7 @@ async function save() {
   if (form.display_name.trim().length < 2) return uni.showToast({ title: '达人名称至少2个字', icon: 'none' })
   if (form.bio.trim().length < 10) return uni.showToast({ title: '达人简介至少10个字', icon: 'none' })
   if (!media.value.length || media.value[0].type !== 'image') return uni.showToast({ title: '请上传一张封面照片', icon: 'none' })
+  if (videoCount.value > 2) return uni.showToast({ title: '最多保留2个视频，请先移除多余视频', icon: 'none' })
   saving.value = true
   try {
     apply((await saveProviderProfile({ ...form, lifestyle_photo_id: media.value[0].id, media_ids: media.value.map(item => item.id), display_name: form.display_name.trim(), bio: form.bio.trim() })).data)

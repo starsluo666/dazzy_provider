@@ -143,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+import { ensureFirstOrderTraining } from '@/services/training'
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 
@@ -332,6 +333,7 @@ async function runUpdate(label: string, task: () => Promise<{ data: ProviderMana
 }
 async function acceptOrder() {
   if (!order.value) return
+  if (!await ensureFirstOrderTraining()) return
   const confirmed = await confirmAction('确认接受订单', `必须由账号实名认证本人接单并提供服务，禁止代接、转单或由他人替代。确认由本人于 ${timeRange(order.value.starts_at, order.value.ends_at)} 按时提供服务吗？`)
   if (confirmed) await runUpdate('接单中…', () => acceptManagedProviderOrder(orderNo.value))
 }

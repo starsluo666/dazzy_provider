@@ -45,6 +45,7 @@ async function main() {
     const text = fs.readFileSync(path.resolve(__dirname, `../src/pages/orders/${page}.vue`), 'utf8')
     assert.match(text, /confirmOrderDeparture\(/)
     assert.match(text, /contactOrderCustomer\(/)
+    assert.match(text, /pending_service['"] && !order(?:\.value)?\.provider_contact_initiated_at/, 'departure disabled until this order has a server contact record')
     assert.match(text, /completeManagedProviderOrder\([^\n]+await getCurrentLocation\(\)/)
   }
   console.log('PASS per-order contact, explicit confirmation, cancelled dial, fresh completion location and shared list/detail flow')

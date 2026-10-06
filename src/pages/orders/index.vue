@@ -215,7 +215,8 @@ function evidenceTime(order: ProviderManagedOrder) {
     : '已留存照片与上传位置'
 }
 function isActionDisabled(order: ProviderManagedOrder) {
-  return Boolean(busyOrderNo.value || (order.status === 'pending_acceptance' && isExpired(order)))
+  return Boolean(busyOrderNo.value || (order.status === 'pending_acceptance' && isExpired(order))
+    || (order.status === 'pending_service' && !order.provider_contact_initiated_at))
 }
 function updateOrder(updated: ProviderManagedOrder) {
   const index = orders.value.findIndex((item) => item.order_no === updated.order_no)

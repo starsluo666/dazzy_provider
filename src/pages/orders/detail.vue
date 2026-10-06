@@ -178,7 +178,10 @@ const money = formatAmount
 const phoneIsMasked = computed(() => !order.value || !canContactOrder(order.value))
 const canNavigate = computed(() => Boolean(order.value?.meeting_longitude && order.value?.meeting_latitude))
 const showActionBar = computed(() => Boolean(order.value && actionLabel(order.value)))
-const actionDisabled = computed(() => Boolean(order.value?.status === 'pending_acceptance' && isExpired(order.value)))
+const actionDisabled = computed(() => Boolean(order.value && (
+  (order.value.status === 'pending_acceptance' && isExpired(order.value))
+  || (order.value.status === 'pending_service' && !order.value.provider_contact_initiated_at)
+)))
 const priceRows = computed(() => {
   if (!order.value) return []
   const rows = [
@@ -213,7 +216,7 @@ const timeline = computed<TimelineItem[]>(() => {
   )
   const next = {
     pending_acceptance: ['等待达人接单', acceptanceCopy(item)],
-    pending_service: ['等待出发', '请根据预约时间合理安排行程'],
+    pending_service: ['等待出发', item.provider_contact_initiated_at ? '出发前请确认已与用户核实订单' : '请先点击手机号旁的联系按钮'],
     departed: item.arrival_photo_url ? ['等待开始服务', '与用户会合后确认开始'] : ['等待上传集合照', '抵达集合地点后拍照并留存位置'],
     in_service: ['服务进行中', '服务结束后提交完成'],
     pending_confirmation: [

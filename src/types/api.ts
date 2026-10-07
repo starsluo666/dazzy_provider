@@ -237,6 +237,15 @@ export interface ProviderScheduleDay {
 }
 
 export interface ProviderManagedOrder {
+  timeout?: {
+    departure_deadline_at: string | null
+    timed_out_at: string | null
+    reason: string
+    refund_label: string
+    credit_points: number
+    credit_reversed_at: string | null
+    configured_credit_penalty: number | null
+  }
   provider_contact_initiated_at: string | null
   departure_contact_confirmed_at: string | null
   fulfillment_review_required: boolean

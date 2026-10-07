@@ -72,6 +72,14 @@
         <view v-else-if="order.status === 'departed'" class="evidence-placeholder">
           <text class="evidence-title">到场后上传集合照</text><text class="evidence-time">需包含本人及现场环境，同时记录当前位置</text>
         </view>
+        <view v-if="order.timeout?.timed_out_at" class="risk-notice">
+          <text class="risk-title">{{ order.timeout.reason }} · {{ order.timeout.refund_label }}</text>
+          <text class="risk-copy">{{ order.timeout.credit_reversed_at ? '本单扣分已申诉撤销' : `本单扣减信用分 ${order.timeout.credit_points} 分` }}。如有异议，请携订单号联系客服。</text>
+        </view>
+        <view v-else-if="['pending_acceptance', 'pending_service'].includes(order.status) && order.timeout?.departure_deadline_at" class="risk-notice">
+          <text class="risk-title">请于 {{ dateTime(order.timeout.departure_deadline_at) }} 前确认出发</text>
+          <text class="risk-copy">接单后请按预约时间到场。已接单却超时未出发将取消退款，并按本单规则扣 {{ order.timeout.configured_credit_penalty }} 分。</text>
+        </view>
         <view v-if="order.fulfillment_review_required" class="risk-notice">
           <text class="risk-title">履约异常 · 待客服审核</text>
           <text class="risk-copy">自动确认与分账已暂停，审核通过后恢复。</text>
@@ -199,6 +207,7 @@ function nextStepTitle(order: ProviderManagedOrder) {
   return '订单履约记录'
 }
 function nextStepCopy(order: ProviderManagedOrder) {
+  if (order.timeout?.timed_out_at) return `${order.timeout.reason} · ${order.timeout.refund_label}`
   if (order.fulfillment_review_required) return '履约时间需客服核实，自动确认和分账已暂停'
   if (order.status === 'pending_acceptance') return acceptanceCopy(order)
   if (order.status === 'pending_service') return order.provider_contact_initiated_at ? '出发前请确认已与用户核实订单' : '请先联系用户，核实订单情况'
@@ -260,6 +269,7 @@ async function runUpdate(order: ProviderManagedOrder, label: string, task: () =>
   } catch (reason) {
     const message = getErrorMessage(reason, '操作失败')
     if (message) uni.showToast({ title: message, icon: 'none' })
+    await load()
     return false
   } finally {
     busyOrderNo.value = ''

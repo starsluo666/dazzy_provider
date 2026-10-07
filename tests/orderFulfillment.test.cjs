@@ -47,6 +47,10 @@ async function main() {
     assert.match(text, /contactOrderCustomer\(/)
     assert.match(text, /pending_service['"] && !order(?:\.value)?\.provider_contact_initiated_at/, 'departure disabled until this order has a server contact record')
     assert.match(text, /completeManagedProviderOrder\([^\n]+await getCurrentLocation\(\)/)
+    assert.match(text, /timeout\?\.departure_deadline_at/, 'show server-side departure deadline in list and detail')
+    assert.match(text, /timeout\?\.timed_out_at/, 'show the cancellation reason and refund progress')
+    assert.match(text, /timeout\.credit_reversed_at/, 'show successful penalty appeal without reopening the order')
+    assert.match(text, /const message = getErrorMessage\(reason, '操作失败'\)[\s\S]*?await load\(\)/, 'reload after server timeout/conflict instead of leaving a stale depart button')
   }
   console.log('PASS per-order contact, explicit confirmation, cancelled dial, fresh completion location and shared list/detail flow')
 }

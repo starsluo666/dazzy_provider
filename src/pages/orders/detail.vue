@@ -34,6 +34,18 @@
           <text class="hero-tip">{{ nextStepCopy(order) }}</text>
         </section>
 
+        <section v-if="order.timeout?.timed_out_at || (['pending_acceptance', 'pending_service'].includes(order.status) && order.timeout?.departure_deadline_at)" class="support-alert">
+          <view class="alert-icon">!</view>
+          <view v-if="order.timeout?.timed_out_at">
+            <strong class="strong-text">{{ order.timeout.reason }} · {{ order.timeout.refund_label }}</strong>
+            <text>{{ order.timeout.credit_reversed_at ? '本单扣分已申诉撤销' : `本单扣减信用分 ${order.timeout.credit_points} 分` }}。如有异议，请携订单号联系客服申诉；订单取消及退款不因申诉撤销。</text>
+          </view>
+          <view v-else>
+            <strong class="strong-text">出发截止 {{ dateTime(order.timeout?.departure_deadline_at || null) }}</strong>
+            <text>接单后请按预约时间到场，先联系用户再确认出发。已接单却超时未出发且无履约记录，将取消退款并扣 {{ order.timeout?.configured_credit_penalty }} 分；点击联系不会延长截止时间。</text>
+          </view>
+        </section>
+
         <section v-if="order.provider_rejected_at" class="support-alert">
           <view class="alert-icon">!</view>
           <view>
@@ -274,6 +286,7 @@ function acceptanceCopy(item: ProviderManagedOrder) {
   return minutes ? `剩余约 ${minutes} 分钟确认` : '接单时限已到，请联系客服'
 }
 function nextStepCopy(item: ProviderManagedOrder) {
+  if (item.timeout?.timed_out_at) return `${item.timeout.reason} · ${item.timeout.refund_label}`
   if (item.fulfillment_review_required) return '履约异常待客服审核，自动确认与分账已暂停'
   if (item.status === 'pending_acceptance') return acceptanceCopy(item)
   if (item.status === 'pending_service') return '接受订单后，可查看完整电话与导航位置'
@@ -329,6 +342,7 @@ async function runUpdate(label: string, task: () => Promise<{ data: ProviderMana
   } catch (reason) {
     const message = getErrorMessage(reason, '操作失败')
     if (message) uni.showToast({ title: message, icon: 'none' })
+    await load()
     return false
   } finally {
     busy.value = false

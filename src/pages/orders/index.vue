@@ -191,6 +191,7 @@ function acceptanceCopy(order: ProviderManagedOrder) {
   return minutes ? `剩余约 ${minutes} 分钟确认` : '接单时限已到，请联系客服'
 }
 function actionLabel(order: ProviderManagedOrder) {
+  if (order.status === 'departed' && order.cancellation?.wait_state === 'waiting') return '查看等待进度'
   if (order.status === 'pending_acceptance') return '接受订单'
   if (order.status === 'pending_service') return '确认出发'
   if (order.status === 'departed') return order.arrival_photo_url ? '开始服务' : '上传集合照'
@@ -198,6 +199,7 @@ function actionLabel(order: ProviderManagedOrder) {
   return ''
 }
 function nextStepTitle(order: ProviderManagedOrder) {
+  if (order.status === 'departed' && order.cancellation?.wait_state === 'waiting') return '正在等待联系用户'
   if (order.status === 'pending_acceptance') return '等待你确认'
   if (order.status === 'pending_service') return '下一步：确认出发'
   if (order.status === 'departed' && !order.arrival_photo_url) return '下一步：到场拍照'
@@ -208,6 +210,7 @@ function nextStepTitle(order: ProviderManagedOrder) {
   return '订单履约记录'
 }
 function nextStepCopy(order: ProviderManagedOrder) {
+  if (order.cancellation?.wait_state === 'waiting') return '联系上用户后，请进入详情结束等待再开始服务'
   if (order.after_sales?.termination) return order.after_sales.termination.finance_label
   if (order.timeout?.timed_out_at) return `${order.timeout.reason} · ${order.timeout.refund_label}`
   if (order.fulfillment_review_required) return '履约时间需客服核实，自动确认和分账已暂停'
@@ -343,6 +346,7 @@ async function contactCustomer(order: ProviderManagedOrder) {
 }
 function performAction(order: ProviderManagedOrder) {
   if (busyOrderNo.value) return
+  if (order.status === 'departed' && order.cancellation?.wait_state === 'waiting') return openDetail(order)
   if (order.status === 'pending_acceptance') return accept(order)
   if (order.status === 'pending_service') return depart(order)
   if (order.status === 'departed' && !order.arrival_photo_url) return uploadEvidence(order)

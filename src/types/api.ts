@@ -248,6 +248,11 @@ export interface OrderTerminationSummary {
 }
 
 export interface ProviderManagedOrder {
+  cancellation?: {
+    policy: { version?: string }; transport_mode_label: string; arrived_at: string | null
+    wait_state: string; wait_deadline_at: string | null; finance_notice: string
+    decision: { rule?: string; label?: string; refund_amount?: number }
+  }
   after_sales?: {
     status_label: string
     result_note: string

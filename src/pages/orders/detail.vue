@@ -113,6 +113,7 @@
           </view>
         </section>
 
+        <CustomerWaitCard :order-no="order.order_no" :status="order.status" :info="order.cancellation" @changed="load" />
         <TerminationRequestForm v-if="['in_service', 'pending_confirmation'].includes(order.status)" :order-no="order.order_no" @submitted="load" />
         <section v-if="order.after_sales?.termination" class="detail-card note-card">
           <strong class="strong-text">提前终止服务 · {{ order.after_sales.status_label }}</strong>
@@ -169,6 +170,7 @@ import { onLoad } from '@dcloudio/uni-app'
 
 import NetworkState from '@/components/NetworkState.vue'
 import TerminationRequestForm from '@/components/TerminationRequestForm.vue'
+import CustomerWaitCard from '@/components/CustomerWaitCard.vue'
 import {
   acceptManagedProviderOrder,
   attachManagedOrderArrivalEvidence,
@@ -310,6 +312,7 @@ function nextStepCopy(item: ProviderManagedOrder) {
   return item.status_label
 }
 function actionLabel(item: ProviderManagedOrder) {
+  if (item.status === 'departed' && item.cancellation?.wait_state === 'waiting') return ''
   if (item.status === 'pending_acceptance') return '接受订单'
   if (item.status === 'pending_service') return '确认出发'
   if (item.status === 'departed') return item.arrival_photo_url ? '开始服务' : '上传集合照'
@@ -401,6 +404,7 @@ async function completeOrder() {
 }
 function performPrimaryAction() {
   if (!order.value) return
+  if (order.value.cancellation?.wait_state === 'waiting') return
   if (order.value.status === 'pending_acceptance') return acceptOrder()
   if (order.value.status === 'pending_service') return departOrder()
   if (order.value.status === 'departed' && !order.value.arrival_photo_url) return uploadEvidence()

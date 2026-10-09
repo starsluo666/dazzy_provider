@@ -113,6 +113,14 @@
           </view>
         </section>
 
+        <TerminationRequestForm v-if="['in_service', 'pending_confirmation'].includes(order.status)" :order-no="order.order_no" @submitted="load" />
+        <section v-if="order.after_sales?.termination" class="detail-card note-card">
+          <strong class="strong-text">提前终止服务 · {{ order.after_sales.status_label }}</strong>
+          <text>{{ order.after_sales.termination.finance_label }}</text>
+          <text v-if="order.after_sales.termination.decision">核定结束：{{ dateTime(order.after_sales.termination.decision.ended_at) }} · {{ order.after_sales.termination.decision.responsibility_label }}</text>
+          <text v-if="order.after_sales.refund_status_label">退款进度：{{ order.after_sales.refund_status_label }}</text>
+          <text v-if="order.after_sales.result_note">{{ order.after_sales.result_note }}</text>
+        </section>
         <section class="detail-card timeline-card">
           <header><strong class="strong-text">履约进度</strong></header>
           <view v-for="(item, index) in timeline" :key="`${item.label}-${index}`" class="timeline-row" :class="{ done: item.done, current: item.current, danger: item.danger }">
@@ -160,6 +168,7 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 
 import NetworkState from '@/components/NetworkState.vue'
+import TerminationRequestForm from '@/components/TerminationRequestForm.vue'
 import {
   acceptManagedProviderOrder,
   attachManagedOrderArrivalEvidence,
@@ -242,6 +251,7 @@ const timeline = computed<TimelineItem[]>(() => {
     refunded: ['订单已退款', '本单履约流程已结束'],
     cancelled: ['订单已取消', '本单履约流程已结束'],
     completed: ['订单已完成', '本单履约流程已结束'],
+    terminated: ['服务已提前终止', '退款与剩余款项请查看客服处理进度'],
     pending_support: ['等待平台处理', '请留意平台客服消息'],
   }[item.status]
   if (item.fulfillment_review_required) rows.push({ label: '履约异常待审核', copy: '自动确认与分账已暂停，由客服核实后恢复。', current: true, danger: true })
@@ -269,12 +279,13 @@ function statusLabel(status: string) {
     in_service: '服务中', pending_confirmation: '等待用户确认', pending_review: '等待评价',
     completed: '已完成', cancelled: '已取消', refunded: '已退款', pending_support: '客服处理中',
     after_sales: '售后处理中',
+    terminated: '已提前终止',
   }[status] || order.value?.status_label || '处理中'
 }
 function statusTone(status: string) {
   if (['pending_acceptance', 'pending_support', 'after_sales'].includes(status)) return 'orange'
   if (['completed', 'pending_review'].includes(status)) return 'green'
-  if (['cancelled', 'refunded'].includes(status)) return 'gray'
+  if (['cancelled', 'refunded', 'terminated'].includes(status)) return 'gray'
   return 'cyan'
 }
 function isExpired(item: ProviderManagedOrder) {
@@ -286,6 +297,7 @@ function acceptanceCopy(item: ProviderManagedOrder) {
   return minutes ? `剩余约 ${minutes} 分钟确认` : '接单时限已到，请联系客服'
 }
 function nextStepCopy(item: ProviderManagedOrder) {
+  if (item.after_sales?.termination) return item.after_sales.termination.finance_label
   if (item.timeout?.timed_out_at) return `${item.timeout.reason} · ${item.timeout.refund_label}`
   if (item.fulfillment_review_required) return '履约异常待客服审核，自动确认与分账已暂停'
   if (item.status === 'pending_acceptance') return acceptanceCopy(item)

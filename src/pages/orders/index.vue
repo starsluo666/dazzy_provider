@@ -143,7 +143,7 @@ function inTab(status: string, tab: OrderTab) {
   if (tab === 'all') return true
   if (tab === 'in_progress') return ['departed', 'in_service', 'pending_confirmation'].includes(status)
   if (tab === 'support') return ['pending_support', 'after_sales', 'refunded'].includes(status)
-  if (tab === 'completed') return ['pending_review', 'completed', 'cancelled'].includes(status)
+  if (tab === 'completed') return ['pending_review', 'completed', 'terminated', 'cancelled'].includes(status)
   return status === tab
 }
 
@@ -173,12 +173,13 @@ function statusLabel(status: string) {
     in_service: '服务中', pending_confirmation: '等待用户确认', pending_review: '等待评价',
     completed: '已完成', cancelled: '已取消', refunded: '已退款', pending_support: '客服处理中',
     after_sales: '售后处理中',
+    terminated: '已提前终止',
   }[status] || '处理中'
 }
 function statusTone(status: string) {
   if (['pending_acceptance', 'pending_support', 'after_sales'].includes(status)) return 'orange'
   if (['completed', 'pending_review'].includes(status)) return 'green'
-  if (['cancelled', 'refunded'].includes(status)) return 'gray'
+  if (['cancelled', 'refunded', 'terminated'].includes(status)) return 'gray'
   return 'cyan'
 }
 function isExpired(order: ProviderManagedOrder) {
@@ -207,6 +208,7 @@ function nextStepTitle(order: ProviderManagedOrder) {
   return '订单履约记录'
 }
 function nextStepCopy(order: ProviderManagedOrder) {
+  if (order.after_sales?.termination) return order.after_sales.termination.finance_label
   if (order.timeout?.timed_out_at) return `${order.timeout.reason} · ${order.timeout.refund_label}`
   if (order.fulfillment_review_required) return '履约时间需客服核实，自动确认和分账已暂停'
   if (order.status === 'pending_acceptance') return acceptanceCopy(order)

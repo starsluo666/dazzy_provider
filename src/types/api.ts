@@ -236,7 +236,24 @@ export interface ProviderScheduleDay {
   periods: ProviderSchedulePeriod[]
 }
 
+export interface OrderTerminationSummary {
+  reported_ended_at: string
+  finance_state: string
+  finance_label: string
+  decision?: {
+    ended_at: string
+    responsibility_label: string
+    component_refunds: { service: number; transport: number; other: number }
+  }
+}
+
 export interface ProviderManagedOrder {
+  after_sales?: {
+    status_label: string
+    result_note: string
+    refund_status_label: string | null
+    termination?: OrderTerminationSummary | null
+  } | null
   timeout?: {
     departure_deadline_at: string | null
     timed_out_at: string | null

@@ -1,6 +1,13 @@
 import type { DataResponse, ProviderManagedOrder } from '@/types/api'
 import { request, uploadFile } from './http'
 
+export function createTerminationRequest(orderNo: string, data: { ended_at: string; reason: string; evidence_asset_ids: string[] }) {
+  return request(`/providers/me/orders/${encodeURIComponent(orderNo)}/termination/`, { method: 'POST', data })
+}
+export function uploadProviderOrderAfterSalesEvidence(filePath: string, file?: unknown) {
+  return uploadFile<DataResponse<{ id: string; url: string }>>('/media/support-attachments/', filePath, 'file', file)
+}
+
 export function getManagedProviderOrders(status = '') {
   return request<{ data: { items: ProviderManagedOrder[] } }>('/providers/me/orders/', {
     query: { status: status || undefined },

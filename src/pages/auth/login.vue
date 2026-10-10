@@ -9,7 +9,7 @@
         <view class="auth-mode-title"><text>密码登录</text><view /></view>
         <label class="auth-field"><input v-model="phone" type="number" maxlength="11" placeholder="请输入手机号" /></label>
         <label class="auth-field"><input v-model="password" :password="!visible" maxlength="20" placeholder="请输入密码" /><view class="auth-field-action" @tap="visible=!visible">{{ visible ? '隐藏' : '显示' }}</view></label>
-        <view class="auth-inline-link">仅审核通过的达人账号可登录</view>
+        <view class="auth-inline-link">已提交入驻申请也可登录查看审核进度</view>
         <button class="auth-primary" :disabled="submitting" @tap="submit">{{ submitting ? '登录中…' : '登录' }}</button>
         <!-- #ifdef MP-WEIXIN -->
         <view class="wechat-divider"><text>或</text></view>
@@ -25,7 +25,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { loginWithPassword, loginWithWechatMiniProgram } from '@/services/auth'
-import { returnAfterAuthentication } from '@/services/session'
+import { enterProviderApp } from '@/services/providerApplication'
 import LegalConsent from '@/components/LegalConsent.vue'
 import { openLegalDocument } from '@/content/legal'
 
@@ -39,7 +39,7 @@ async function wechatLogin(event:{detail?:{code?:string;errMsg?:string}}){
   const phoneCode=event.detail?.code
   if(!phoneCode)return warn(event.detail?.errMsg?.includes('deny')?'需要授权手机号才能首次登录':'微信手机号授权失败')
   wechatSubmitting.value=true
-  try{const session=await loginWithWechatMiniProgram(await getWechatLoginCode(),phoneCode);uni.showToast({title:session.closure_cancelled?'登录成功，注销申请已撤销':'登录成功',icon:'success'});setTimeout(()=>returnAfterAuthentication(redirect.value),300)}
+  try{const session=await loginWithWechatMiniProgram(await getWechatLoginCode(),phoneCode);await enterProviderApp(redirect.value);uni.showToast({title:session.closure_cancelled?'登录成功，注销申请已撤销':'登录成功',icon:'success'})}
   catch(reason){warn((reason as Error).message||'微信登录失败')}
   finally{wechatSubmitting.value=false}
 }
@@ -48,7 +48,7 @@ async function submit(){
   if(password.value.length<8)return warn('请输入 8–20 位密码')
   if(!agreed.value)return warn('请先阅读并同意用户协议和隐私政策')
   submitting.value=true
-  try{const session=await loginWithPassword(phone.value,password.value);uni.showToast({title:session.closure_cancelled?'登录成功，注销申请已撤销':'登录成功',icon:'success'});setTimeout(()=>returnAfterAuthentication(redirect.value),300)}
+  try{const session=await loginWithPassword(phone.value,password.value);await enterProviderApp(redirect.value);uni.showToast({title:session.closure_cancelled?'登录成功，注销申请已撤销':'登录成功',icon:'success'})}
   catch(reason){warn((reason as Error).message||'登录失败')}
   finally{submitting.value=false}
 }

@@ -32,7 +32,7 @@ export function isAuthenticated(): boolean {
   )
 }
 
-const publicRoutes = ['/pages/auth/login', '/pages/legal/document']
+const publicRoutes = ['/pages/auth/login', '/pages/legal/document', '/pages/invitations/provider-register']
 export function isProtectedRoute(url: string): boolean {
   const path = (url.startsWith('/') ? url : `/${url}`).split('?')[0]
   return !publicRoutes.includes(path)
@@ -83,8 +83,7 @@ export function returnAfterAuthentication(returnUrl?: string) {
   uni.reLaunch({ url: safeReturnUrl(returnUrl) })
 }
 
-export function guardCurrentPage(): boolean {
-  const url = currentPageUrl()
+export function guardCurrentPage(url = currentPageUrl()): boolean {
   return !isProtectedRoute(url) || requireAuthentication(url)
 }
 

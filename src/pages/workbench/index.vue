@@ -146,6 +146,7 @@ import {
   updateProviderOnlineLocation,
 } from '@/services/providers'
 import { guardCurrentPage } from '@/services/session'
+import { redirectToApplicationIfNeeded } from '@/services/providerApplication'
 import type { ProviderOnlineSession, ProviderWorkbench } from '@/types/api'
 import { formatAmount, getErrorMessage } from '@/utils/formatters'
 import { businessClock, businessDateKey, businessTimeParts } from '@/utils/businessTime'
@@ -162,6 +163,7 @@ const locationWarning = ref('')
 const unreadCount = ref(0)
 let observedOrderUnread: number | null = null
 let notificationTimer: ReturnType<typeof setInterval> | null = null
+let pageVisible = false
 
 const avatarUrl = computed(() => typeof data.value?.avatar_url === 'string' ? data.value.avatar_url : '')
 
@@ -361,10 +363,13 @@ async function load(showLoading = true) {
   if (showLoading) loading.value = true
   error.value = ''
   try {
+    if (showLoading && await redirectToApplicationIfNeeded()) { data.value = null; return false }
     data.value = (await getProviderWorkbench()).data
     await resumeReporter()
+    return true
   } catch (reason) {
     error.value = getErrorMessage(reason, '工作台加载失败')
+    return false
   } finally {
     loading.value = false
   }
@@ -394,14 +399,15 @@ function stopNotificationPolling() {
   notificationTimer = null
 }
 
-onShow(() => {
+onShow(async () => {
+  pageVisible = true
   if (!guardCurrentPage()) return
-  void load()
+  if (!await load() || !pageVisible) return
   void refreshNotificationSummary(false)
   startNotificationPolling()
 })
-onHide(stopNotificationPolling)
-onUnmounted(stopNotificationPolling)
+onHide(() => { pageVisible = false; stopNotificationPolling() })
+onUnmounted(() => { pageVisible = false; stopNotificationPolling() })
 </script>
 
 <style lang="scss" scoped>

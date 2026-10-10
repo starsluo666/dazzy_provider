@@ -1,6 +1,9 @@
 {
   "pages": [
     { "path": "pages/workbench/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/invitations/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/invitations/provider-register", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/invitations/application", "style": { "navigationStyle": "custom" } },
     { "path": "pages/auth/login", "style": { "navigationStyle": "custom" } },
     { "path": "pages/legal/document", "style": { "navigationStyle": "custom" } },
     { "path": "pages/messages/index", "style": { "navigationStyle": "custom" } },

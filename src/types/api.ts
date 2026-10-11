@@ -104,6 +104,16 @@ export interface ProviderIdentity {
   identity_submitted_at: string | null
   identity_reviewed_at: string | null
   identity_rejection_reason: string
+  identity_verification?: {
+    enabled: boolean
+    required: boolean
+    consent_version: string
+    notice: string
+    status: 'not_checked' | 'processing' | 'passed' | 'failed' | 'error'
+    status_label: string
+    message: string
+    checked_at: string | null
+  }
 }
 
 export interface ProviderMedia { id: string; type: 'image' | 'video'; url: string; duration_ms?: number | null }

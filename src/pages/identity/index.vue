@@ -43,21 +43,27 @@
           <text class="reject-copy">{{ data.identity_rejection_reason }}</text>
         </view>
 
+        <view v-if="data.identity_verification && (data.identity_verification.enabled || data.identity_verification.required)" class="privacy-card">
+          <view class="privacy-title"><text>{{ data.identity_verification.status_label }}</text></view>
+          <text class="privacy-copy">{{ data.identity_verification.message }}</text>
+          <text class="privacy-copy">身份证验真不等于认证完成，其他材料仍需人工审核。</text>
+          <button v-if="checkingIdentity" class="secondary-button" @tap="load">刷新验真结果</button>
+        </view>
+
         <view class="form-card">
           <view class="form-row">
             <text class="form-label">真实姓名</text>
             <view class="form-value">
-              <input v-if="!locked" v-model="form.identity_real_name" class="form-input" placeholder="请输入身份证上的姓名" maxlength="50" />
-              <text v-else class="locked-value">{{ maskedRealName }}</text>
+              <text class="locked-value">{{ recognizedIdentity ? data.identity_real_name : '验真通过后自动识别' }}</text>
+              <text class="form-helper">与入驻申请姓名核对，无需重复填写</text>
             </view>
             <view v-if="locked" class="lock-icon" />
           </view>
           <view class="form-row form-row-tall">
             <text class="form-label">身份证号码</text>
             <view class="form-value">
-              <input v-if="!locked" v-model="form.id_number" class="form-input" type="idcard" placeholder="请输入18位身份证号码" maxlength="18" />
-              <text v-else class="locked-value identity-number">{{ data.identity_number_masked || '已完成核验' }}</text>
-              <text v-if="!locked && data.identity_number_masked" class="form-helper">已保存：{{ data.identity_number_masked }}，无需重复填写</text>
+              <text class="locked-value identity-number">{{ recognizedIdentity ? data.identity_number_masked : '验真通过后自动识别' }}</text>
+              <text class="form-helper">仅展示脱敏号码，不支持手动修改</text>
             </view>
             <view v-if="locked" class="lock-icon" />
           </view>
@@ -88,7 +94,7 @@
             </view>
             <view class="photo-copy">
               <text class="photo-title">{{ item.label }}</text>
-              <text class="photo-help">{{ locked ? '已通过核验' : item.help }}</text>
+              <text class="photo-help">{{ data.identity_status === 'verified' ? '已通过平台审核' : locked ? '材料已锁定，待核验' : item.help }}</text>
             </view>
             <view v-if="!locked" class="material-action">
               <text>{{ uploading[item.key] ? '上传中' : item.id ? '更换' : '上传' }}</text>
@@ -100,6 +106,9 @@
         <view class="privacy-card">
           <view class="privacy-title"><view class="lock-icon privacy-lock" /><text>隐私保护说明</text></view>
           <text class="privacy-copy">新上传的身份证正反面自动添加“仅用于达人验证”水印。认证材料使用私有存储；公开页面只展示认证结果，不展示姓名、证件号码或原图。</text>
+          <text class="privacy-copy">本人自拍仅供客服人工核对，不进行活体检测，也不提交腾讯云身份证验真接口。</text>
+          <text v-if="!locked && !data.identity_verification?.enabled" class="privacy-copy">身份证自动识别与验真暂未开放，可先保存照片，稍后重试或联系客服。</text>
+          <text v-if="data.identity_verification?.enabled" class="privacy-copy">{{ data.identity_verification.notice }}</text>
         </view>
       </template>
     </view>
@@ -132,21 +141,22 @@ const uploading = reactive<Record<PhotoKey, boolean>>({
 })
 const uploadingAny = computed(() => Object.values(uploading).some(Boolean))
 const data = ref<ProviderIdentity | null>(null)
-const form = reactive({ identity_real_name: '', id_number: '', identity_front_photo_id: null as string | null, identity_back_photo_id: null as string | null, identity_face_photo_id: null as string | null })
+const form = reactive({ identity_front_photo_id: null as string | null, identity_back_photo_id: null as string | null, identity_face_photo_id: null as string | null })
 const previews = reactive({ identity_front_photo: '', identity_back_photo: '', identity_face_photo: '' })
-const locked = computed(() => data.value?.identity_status === 'pending' || data.value?.identity_status === 'verified')
-const statusHeading = computed(() => ({
+const checkingIdentity = computed(() => data.value?.identity_verification?.status === 'processing')
+const locked = computed(() => checkingIdentity.value || data.value?.identity_status === 'pending' || data.value?.identity_status === 'verified')
+const statusHeading = computed(() => checkingIdentity.value ? '身份证验真中' : ({
   unverified: '未认证',
   pending: '审核中',
   verified: '已认证',
   rejected: '认证未通过',
 }[data.value?.identity_status || 'unverified']))
-const statusCopy = computed(() => ({ unverified: '填写信息并上传材料后提交平台核验', pending: '资料已提交，平台正在核验，请耐心等待', verified: '身份核验已完成，可继续完善资料和服务', rejected: '请根据原因修改材料后重新提交' }[data.value?.identity_status || 'unverified']))
-const progressSteps = ['人像面', '国徽面', '核验照片']
+const statusCopy = computed(() => ({ unverified: '上传证件与本人自拍，姓名和号码自动识别', pending: '证件与自拍已提交，等待客服人工审核', verified: '身份核验已完成，可继续完善资料和服务', rejected: '请根据原因修改照片后重新提交' }[data.value?.identity_status || 'unverified']))
+const progressSteps = ['人像面', '国徽面', '本人自拍']
 const photoItems = computed(() => [
   { key: 'identity_front_photo' as PhotoKey, label: '身份证人像面', help: '证件正面，姓名与号码清晰', id: form.identity_front_photo_id, url: previews.identity_front_photo, glyph: 'camera-glyph' },
   { key: 'identity_back_photo' as PhotoKey, label: '身份证国徽面', help: '证件背面，有效期清晰', id: form.identity_back_photo_id, url: previews.identity_back_photo, glyph: 'camera-glyph' },
-  { key: 'identity_face_photo' as PhotoKey, label: '本人核验照片', help: '正脸清晰、光线自然', id: form.identity_face_photo_id, url: previews.identity_face_photo, glyph: 'face-glyph' },
+  { key: 'identity_face_photo' as PhotoKey, label: '本人自拍', help: '正脸清晰，仅供客服人工审核', id: form.identity_face_photo_id, url: previews.identity_face_photo, glyph: 'face-glyph' },
 ])
 const completedMaterialCount = computed(() => photoItems.value.filter((item) => Boolean(item.id)).length)
 const statusProgressCount = computed(() => locked.value ? 3 : completedMaterialCount.value)
@@ -156,34 +166,48 @@ const materialProgress = computed(() => {
   if (data.value?.identity_status === 'rejected') return '待修改'
   return `${completedMaterialCount.value}/3 份材料`
 })
-const maskedRealName = computed(() => {
-  const name = form.identity_real_name.trim()
-  if (!name) return '已完成核验'
-  return `${name.slice(0, 1)}${'*'.repeat(Math.min(2, Math.max(1, name.length - 1)))}`
-})
-const lockedFooterCopy = computed(() => data.value?.identity_status === 'pending'
+const recognizedIdentity = computed(() => Boolean(
+  data.value?.identity_real_name && data.value?.identity_number_masked
+  && (data.value.identity_verification?.status === 'passed' || ['pending', 'verified'].includes(data.value.identity_status))
+  && photoItems.value.every(item => item.id === data.value?.[`${item.key}_id` as keyof ProviderIdentity]),
+))
+const lockedFooterCopy = computed(() => checkingIdentity.value ? '身份证验真中 · 请稍后刷新结果' : data.value?.identity_status === 'pending'
   ? '资料审核中 · 审核完成前暂时无法修改'
   : '资料已锁定 · 如需变更请联系客服')
 
 function back(){ uni.navigateBack() }
-function apply(value: ProviderIdentity){ data.value=value; form.identity_real_name=value.identity_real_name; form.id_number=''; form.identity_front_photo_id=value.identity_front_photo_id; form.identity_back_photo_id=value.identity_back_photo_id; form.identity_face_photo_id=value.identity_face_photo_id; previews.identity_front_photo=value.identity_front_photo_url||''; previews.identity_back_photo=value.identity_back_photo_url||''; previews.identity_face_photo=value.identity_face_photo_url||'' }
+function apply(value: ProviderIdentity){ data.value=value; form.identity_front_photo_id=value.identity_front_photo_id; form.identity_back_photo_id=value.identity_back_photo_id; form.identity_face_photo_id=value.identity_face_photo_id; previews.identity_front_photo=value.identity_front_photo_url||''; previews.identity_back_photo=value.identity_back_photo_url||''; previews.identity_face_photo=value.identity_face_photo_url||'' }
 async function load(){ loading.value=true; error.value=''; try{ apply((await getProviderIdentity()).data) }catch(reason){ error.value=getErrorMessage(reason) }finally{ loading.value=false } }
-function payload(){ return { identity_real_name: form.identity_real_name.trim(), ...(form.id_number ? { id_number: form.id_number.trim().toUpperCase() } : {}), identity_front_photo_id: form.identity_front_photo_id, identity_back_photo_id: form.identity_back_photo_id, identity_face_photo_id: form.identity_face_photo_id } }
+function payload(){ return { recognition_mode: 'photo', identity_front_photo_id: form.identity_front_photo_id, identity_back_photo_id: form.identity_back_photo_id, identity_face_photo_id: form.identity_face_photo_id } }
 async function save(silent=false){ if(saving.value)return false; saving.value=true; try{ apply((await saveProviderIdentity(payload())).data); if(!silent)uni.showToast({title:'资料已保存',icon:'success'}); return true }catch(reason){ uni.showToast({title:getErrorMessage(reason),icon:'none'}); return false }finally{ saving.value=false } }
 async function submit() {
   if (submitting.value || saving.value || uploadingAny.value || locked.value) return
-  if (!form.identity_real_name.trim()) return uni.showToast({ title: '请填写真实姓名', icon: 'none' })
-  if (!form.id_number && !data.value?.identity_number_masked) return uni.showToast({ title: '请填写身份证号码', icon: 'none' })
+  if (!data.value?.identity_verification?.enabled) {
+    return uni.showModal({ title: '验真暂未开放', content: '可以先保存照片，稍后重试或联系客服。', showCancel: false })
+  }
   if (!form.identity_front_photo_id || !form.identity_back_photo_id || !form.identity_face_photo_id) {
     return uni.showToast({ title: '请上传全部认证材料', icon: 'none' })
   }
   submitting.value = true
   try {
+    let consentVersion = ''
+    if (data.value?.identity_verification?.enabled || data.value?.identity_verification?.required) {
+      const verification = data.value.identity_verification
+      const accepted = await new Promise<boolean>((resolve) => uni.showModal({
+        title: '身份证验真授权', content: verification.notice,
+        confirmText: '同意并提交', cancelText: '暂不提交',
+        success: result => resolve(result.confirm), fail: () => resolve(false),
+      }))
+      if (!accepted) return
+      consentVersion = verification.consent_version
+    }
     if (!await save(true)) return
-    apply((await submitProviderIdentity()).data)
+    apply((await submitProviderIdentity(consentVersion)).data)
     uni.showToast({ title: '已提交审核', icon: 'success' })
   } catch (reason) {
     uni.showModal({ title: '认证提交未通过', content: getErrorMessage(reason), showCancel: false })
+    // A client timeout may happen after the server has already recorded a result.
+    try { apply((await getProviderIdentity()).data) } catch { /* Keep saved inputs on network failure. */ }
   } finally {
     submitting.value = false
   }
@@ -338,7 +362,6 @@ onLoad(() => { if (guardCurrentPage()) void load() })
 .form-row-tall{min-height:122rpx}
 .form-label{width:166rpx;flex:0 0 166rpx;color:$dz-text-primary;font-size:25rpx;font-weight:700;line-height:1.35}
 .form-value{display:flex;min-width:0;gap:6rpx;flex:1;flex-direction:column}
-.form-input{width:100%;height:52rpx;color:$dz-text-primary;font-size:25rpx;line-height:52rpx}
 .locked-value{display:block;color:$dz-text-primary;font-size:25rpx;line-height:1.4}
 .identity-number{font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .form-helper{color:$dz-text-tertiary;font-size:20rpx;line-height:1.4}

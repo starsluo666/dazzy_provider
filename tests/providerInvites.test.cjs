@@ -22,7 +22,8 @@ async function main() {
     addInterceptor: (key, options) => { interceptors[key] = options },
   }
   const session = load('services/session.ts', {}, { uni, getCurrentPages: () => [], setTimeout: fn => fn() })
-  assert.equal(session.isProtectedRoute('/pages/invitations/provider-register?code=ABCDEF123456'), false)
+  const pages = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../src/pages.json'), 'utf8')).pages
+  assert.equal(pages.some(page => page.path === 'pages/invitations/provider-register'), false, 'signup is hosted by the customer H5 only')
   assert.equal(session.isProtectedRoute('/pages/invitations/application'), true)
   assert.equal(session.isProtectedRoute('/pages/invitations/index'), true)
   const hooks = {}
@@ -31,8 +32,8 @@ async function main() {
     '@/services/session': session,
   }, { setTimeout: fn => fn() })
   hooks.launch()
-  hooks.show({ path: 'pages/invitations/provider-register', query: { code: 'ABCDEF123456' } })
-  assert.equal(navigation.length, 0, 'cold-start public registration is not mistaken for workbench')
+  hooks.show({ path: 'pages/legal/document', query: { key: 'privacy-policy' } })
+  assert.equal(navigation.length, 0, 'cold-start public page is not mistaken for workbench')
   const args = { url: '/pages/invitations/application' }
   interceptors.navigateTo.invoke(args)
   assert.equal(args.url, '/pages/auth/login?redirect=%2Fpages%2Finvitations%2Fapplication')
@@ -73,6 +74,6 @@ async function main() {
   assert.equal(uploads[0].header['X-Dazzy-Demo-User'], undefined)
   assert.equal(uploads[0].timeout, 90000)
   assert.equal(requests.length, 1, 'public 401 must not trigger token refresh or re-upload')
-  console.log('PASS invitation cold-start, protected progress, fresh approval routing, public upload isolation')
+  console.log('PASS provider public cold-start, protected progress, fresh approval routing, public upload isolation')
 }
 main().catch(e => { console.error(e); process.exitCode = 1 })

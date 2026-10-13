@@ -13,6 +13,7 @@
     "test:legal": "node tests/legal.test.cjs",
     "test:security": "node tests/security.test.cjs",
     "test:provider-setup": "node tests/providerSetup.test.cjs",
+    "test:cover-crop": "node tests/coverCrop.test.cjs && node tests/photoPreview.test.cjs",
     "test:training": "node tests/training.test.cjs",
     "test:identity-upload": "node tests/identityUpload.test.cjs",
     "test:provider-setup:mp": "node tests/providerSetupMp.test.cjs",

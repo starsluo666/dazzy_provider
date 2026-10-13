@@ -116,7 +116,7 @@ export interface ProviderIdentity {
   }
 }
 
-export interface ProviderMedia { id: string; type: 'image' | 'video'; url: string; duration_ms?: number | null }
+export interface ProviderMedia { id: string; type: 'image' | 'video'; url: string; duration_ms?: number | null; cropped?: boolean }
 
 export interface ProviderProfileData {
   media: ProviderMedia[]

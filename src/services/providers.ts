@@ -66,6 +66,16 @@ export const uploadProviderIdentityPhoto = (filePath: string, file?: unknown, ki
 export const getProviderProfile = () =>
   request<DataResponse<ProviderProfileData>>('/providers/me/profile/')
 
+export interface PhotoCropSource { id?: string; filePath?: string; file?: unknown }
+export interface CroppedProviderPhoto { id: string; url: string; cropped: boolean }
+export interface ProviderPhotoPreview { preview_base64: string; width: number; height: number }
+export const previewProviderPhoto = (source: PhotoCropSource) => source.id
+  ? request<DataResponse<ProviderPhotoPreview>>('/media/provider-photos/preview/', { method: 'POST', data: { source_id: source.id }, timeout: 60000 })
+  : uploadFile<DataResponse<ProviderPhotoPreview>>('/media/provider-photos/preview/', source.filePath!, 'file', source.file, 60000)
+export const cropProviderPhoto = (source: PhotoCropSource, crop: { x: number; y: number; width: number; height: number }) => source.id
+  ? request<DataResponse<CroppedProviderPhoto>>('/media/provider-photos/crop/', { method: 'POST', data: { source_id: source.id, ...crop }, timeout: 60000 })
+  : uploadFile<DataResponse<CroppedProviderPhoto>>('/media/provider-photos/crop/', source.filePath!, 'file', source.file, 60000, Object.fromEntries(Object.entries(crop).map(([key, value]) => [key, String(value)])))
+
 export const saveProviderProfile = (data: Record<string, unknown>) =>
   request<DataResponse<ProviderProfileData>>('/providers/me/profile/', { method: 'PATCH', data })
 

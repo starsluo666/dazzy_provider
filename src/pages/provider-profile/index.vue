@@ -21,14 +21,16 @@
 
         <section class="gallery-panel">
           <view class="panel-heading"><strong class="strong-text">照片与视频</strong><text>{{ media.length }}/9</text></view>
-          <text class="gallery-tip">第一张照片作为列表封面，左右调整展示顺序。最多9个素材，其中视频最多2个、每个不超过10秒；照片≤8MB，支持苹果 HEIC/HEIF；MP4/MOV视频≤50MB，上传后自动转为兼容格式。</text>
+          <text class="gallery-tip">每张照片统一裁剪为5:4，第一张作为封面；轮播及放大均展示裁剪后的照片。最多9个素材，其中视频最多2个、每个不超过10秒；照片≤8MB，支持苹果 HEIC/HEIF；MP4/MOV视频≤50MB。</text>
+          <text v-if="uncroppedCount" class="gallery-warning">还有 {{ uncroppedCount }} 张旧照片待裁剪。请逐张确认取景后再提交审核，当前线上资料不受影响。</text>
           <text v-if="hasUnverifiedVideo" class="gallery-tip">旧视频尚未核验时长，下次提交资料前请移除并重新上传不超过10秒的视频。当前已发布的资料不会因此被删除。</text>
           <view class="gallery-grid">
             <!-- 小程序原生 button 复用后可能保留换位前的 disabled 状态，位置变化时重建卡片。 -->
             <view v-for="(item, index) in media" :key="`${item.id}-${index}`" class="gallery-item">
-              <image v-if="item.type === 'image'" :src="item.url" mode="aspectFill" @tap="previewPhoto(item.url)" />
-              <video v-else :id="`profile-video-${item.id}`" :src="item.url" :autoplay="false" object-fit="contain" @play="pauseVideos(item.id)" />
-              <text class="media-label">{{ index === 0 ? '列表封面' : item.type === 'video' ? '视频' : '照片' }}</text>
+              <view class="gallery-visual"><image v-if="item.type === 'image'" :src="item.url" mode="aspectFill" @tap="previewPhoto(item.url)" />
+              <video v-else :id="`profile-video-${item.id}`" :src="item.url" :autoplay="false" object-fit="contain" @play="pauseVideos(item.id)" /></view>
+              <text class="media-label">{{ index === 0 ? '列表封面' : item.type === 'video' ? '视频' : '照片' }}{{ item.type === 'image' ? item.cropped ? ' · 5:4' : ' · 待裁剪' : '' }}</text>
+              <button v-if="item.type === 'image'" class="crop-photo" :disabled="mediaLocked" @tap="openCrop(item.id)">{{ item.cropped ? '重新裁剪' : '裁剪为 5:4' }}</button>
               <view class="media-actions">
                 <button :disabled="mediaLocked || !canMoveMedia(item.id, -1)" aria-label="前移" @tap="moveMedia(item.id, -1)"><text>前移</text></button>
                 <button :disabled="mediaLocked || !canMoveMedia(item.id, 1)" aria-label="后移" @tap="moveMedia(item.id, 1)"><text>后移</text></button>
@@ -72,9 +74,10 @@
           </view>
         </section>
 
-        <view class="save-bar"><button class="save dz-tappable" hover-class="dz-pressed" :disabled="saving || uploading || data.review_status === 'pending'" @tap="save"><text>{{ saving ? '提交中…' : data.review_status === 'pending' ? '资料审核中' : '提交资料审核' }}</text></button></view>
+        <view class="save-bar"><button class="save dz-tappable" hover-class="dz-pressed" :disabled="mediaLocked" @tap="save"><text>{{ saving ? '提交中…' : data.review_status === 'pending' ? '资料审核中' : '提交资料审核' }}</text></button></view>
       </template>
     </main>
+    <ProviderPhotoCropper v-if="cropJob" :key="cropJob.source.id || cropJob.source.filePath" :source="cropJob.source" :progress="`${cropTotal - cropQueue.length + 1}/${cropTotal}`" @close="cancelCrop" @done="usePhoto" />
   </view>
 </template>
 
@@ -83,7 +86,8 @@ import { computed, reactive, ref } from 'vue'
 import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
 
 import NetworkState from '@/components/NetworkState.vue'
-import { getProviderProfile, saveProviderProfile, uploadProviderLifestylePhoto, uploadProviderVideo } from '@/services/providers'
+import ProviderPhotoCropper from '@/components/ProviderPhotoCropper.vue'
+import { getProviderProfile, saveProviderProfile, uploadProviderVideo, type PhotoCropSource, type CroppedProviderPhoto } from '@/services/providers'
 import type { ProviderMedia, ProviderProfileData } from '@/types/api'
 import { getErrorMessage } from '@/utils/formatters'
 
@@ -99,8 +103,12 @@ const saveAttempted = ref(false)
 const nameFocused = ref(false)
 const error = ref('')
 const media = ref<ProviderMedia[]>([])
+const cropQueue = ref<{ source: PhotoCropSource; replaceId?: string }[]>([])
+const cropTotal = ref(0)
+const cropJob = computed(() => cropQueue.value[0] || null)
+const uncroppedCount = computed(() => media.value.filter(item => item.type === 'image' && !item.cropped).length)
 const data = ref<ProviderProfileData | null>(null)
-const mediaLocked = computed(() => uploading.value || saving.value || data.value?.review_status === 'pending')
+const mediaLocked = computed(() => uploading.value || saving.value || !!cropJob.value || data.value?.review_status === 'pending')
 const videoCount = computed(() => media.value.filter(item => item.type === 'video').length)
 const hasUnverifiedVideo = computed(() => media.value.some(item => item.type === 'video' && !item.duration_ms))
 const form = reactive({
@@ -109,6 +117,23 @@ const form = reactive({
 })
 
 function back() { uni.navigateBack() }
+function openCrop(id: string) {
+  if (mediaLocked.value || !media.value.some(item => item.id === id && item.type === 'image')) return
+  pauseVideos()
+  cropTotal.value = 1
+  cropQueue.value = [{ source: { id }, replaceId: id }]
+}
+function cancelCrop() { cropQueue.value = [] }
+function usePhoto(value: CroppedProviderPhoto) {
+  const job = cropJob.value
+  if (!job) return
+  const photo: ProviderMedia = { ...value, type: 'image' }
+  if (job.replaceId) {
+    const index = media.value.findIndex(item => item.id === job.replaceId)
+    if (index >= 0) media.value.splice(index, 1, photo)
+  } else if (media.value.length < 9) media.value.push(photo)
+  cropQueue.value = cropQueue.value.slice(1)
+}
 function apply(value: ProviderProfileData) {
   pauseVideos()
   data.value = value
@@ -140,14 +165,17 @@ function choosePhoto() {
     count: 9 - media.value.length,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
-    success: async ({ tempFilePaths, tempFiles }) => {
+    success: ({ tempFilePaths, tempFiles }) => {
       try {
-        for (let index = 0; index < tempFilePaths.length && media.value.length < 9; index++) {
+        const jobs: { source: PhotoCropSource }[] = []
+        for (let index = 0; index < tempFilePaths.length && jobs.length < 9 - media.value.length; index++) {
           const selected = Array.isArray(tempFiles) ? tempFiles[index] : tempFiles
-          if (selected?.size && selected.size > 8 * 1024 * 1024) throw new Error('生活照不能超过8MB，已上传的照片会保留')
-          const uploaded = await uploadProviderLifestylePhoto(tempFilePaths[index], selected)
-          media.value.push({ ...uploaded.data, type: 'image' })
+          if (selected?.size && selected.size > 8 * 1024 * 1024) throw new Error('单张照片不能超过8MB，请重新选择')
+          jobs.push({ source: { filePath: tempFilePaths[index], file: selected } })
         }
+        pauseVideos()
+        cropTotal.value = jobs.length
+        cropQueue.value = jobs
       } catch (reason) { uni.showToast({ title: getErrorMessage(reason, '照片上传失败'), icon: 'none' }) }
       finally { uploading.value = false }
     },
@@ -213,6 +241,7 @@ async function save() {
   if (form.display_name.trim().length < 2) return uni.showToast({ title: '达人名称至少2个字', icon: 'none' })
   if (form.bio.trim().length < 10) return uni.showToast({ title: '达人简介至少10个字', icon: 'none' })
   if (!media.value.length || media.value[0].type !== 'image') return uni.showToast({ title: '请上传一张封面照片', icon: 'none' })
+  if (uncroppedCount.value) return uni.showToast({ title: '请先将每张照片裁剪为5:4', icon: 'none' })
   if (videoCount.value > 2) return uni.showToast({ title: '最多保留2个视频，请先移除多余视频', icon: 'none' })
   saving.value = true
   try {
@@ -235,8 +264,9 @@ onUnload(() => pauseVideos())
 @use '../../styles/tokens.scss' as *;
 
 .gallery-panel{padding:24rpx;border:1rpx solid $dz-border;border-radius:28rpx;background:#fff}
+.gallery-warning{display:block;margin:14rpx 0;padding:16rpx;border-radius:12rpx;background:#fff5e3;color:#93620e;font-size:23rpx;line-height:1.6}.crop-photo{display:flex;align-items:center;justify-content:center;width:calc(100% - 16rpx);min-height:72rpx;margin:4rpx 8rpx;padding:0 8rpx;border-radius:12rpx;background:#ddf8f7;color:#087c80;font-size:25rpx;line-height:1.3}.crop-photo::after{display:none}
 .gallery-tip{display:block;margin:14rpx 0;color:$dz-text-secondary;font-size:22rpx;line-height:1.6}
-.gallery-grid{display:flex;flex-wrap:wrap;gap:20rpx}.gallery-item{position:relative;width:calc(50% - 10rpx);overflow:hidden;border-radius:18rpx;background:#f2f7f7}.gallery-item>image,.gallery-item>video{display:block;width:100%;height:250rpx}.media-label{display:block;padding:8rpx 12rpx;color:$dz-brand-deep;font-size:21rpx}.media-actions,.gallery-buttons{display:flex;gap:8rpx;padding:8rpx}.media-actions button,.gallery-buttons button{display:flex;flex:1;min-width:0;align-items:center;justify-content:center;margin:0;padding:0 4rpx;border:0;color:#086f75;background:$dz-brand-soft;line-height:1}.media-actions button::after,.gallery-buttons button::after{display:none}.media-actions button{height:72rpx;font-size:26rpx;font-weight:650}.media-actions button text,.gallery-buttons button text{line-height:1.25;white-space:nowrap}.media-actions button[disabled],.gallery-buttons button[disabled]{color:#64747a;background:#f3f4f4}.gallery-buttons{margin-top:14rpx;gap:16rpx}.gallery-buttons button{height:80rpx;font-size:27rpx;font-weight:650}
+.gallery-grid{display:flex;flex-wrap:wrap;gap:20rpx}.gallery-item{position:relative;width:calc(50% - 10rpx);overflow:hidden;border-radius:18rpx;background:#f2f7f7}.gallery-visual{position:relative;width:100%;height:0;padding-bottom:80%}.gallery-visual>image,.gallery-visual>video{position:absolute;inset:0;display:block;width:100%;height:100%}.media-label{display:block;padding:8rpx 12rpx;color:$dz-brand-deep;font-size:21rpx}.media-actions,.gallery-buttons{display:flex;gap:8rpx;padding:8rpx}.media-actions button,.gallery-buttons button{display:flex;flex:1;min-width:0;align-items:center;justify-content:center;margin:0;padding:0 4rpx;border:0;color:#086f75;background:$dz-brand-soft;line-height:1}.media-actions button::after,.gallery-buttons button::after{display:none}.media-actions button{height:72rpx;font-size:26rpx;font-weight:650}.media-actions button text,.gallery-buttons button text{line-height:1.25;white-space:nowrap}.media-actions button[disabled],.gallery-buttons button[disabled]{color:#64747a;background:#f3f4f4}.gallery-buttons{margin-top:14rpx;gap:16rpx}.gallery-buttons button{height:80rpx;font-size:27rpx;font-weight:650}
 
 .profile-edit-page{padding-bottom:calc(132rpx + env(safe-area-inset-bottom));background:linear-gradient(180deg,#edfafa 0,#f5f9f9 350rpx,#f2f6f6 100%)}
 .page-nav{position:sticky;z-index:30;top:0;display:flex;height:100rpx;align-items:center;justify-content:space-between;background:rgba(247,252,252,.94)}

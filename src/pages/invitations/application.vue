@@ -20,7 +20,7 @@
           <view class="detail"><text class="muted">服务城市</text><text>{{ application.service_city_name || '—' }}</text></view>
           <view v-if="application.invitation_code" class="detail"><text class="muted">邀请码</text><text>{{ application.invitation_code }}</text></view>
         </view>
-        <view class="steps"><text class="section-title">接下来</text><text class="description">入驻初审 → 实名认证、完善资料和服务配置 → 开通审核 → 完成接单学习。</text><text class="description">初审通过不代表已经可以接单，请按工作台提示完成准备。</text></view>
+        <view class="steps"><text class="section-title">接下来</text><text class="description">入驻初审 → 实名认证、完善资料和服务设置 → 开通审核 → 完成接单学习。</text><text class="description">初审通过不代表已经可以接单，请按工作台提示完成准备。</text></view>
       </template>
     </view>
   </view>
@@ -41,7 +41,7 @@ const statusDescription = computed(() => {
   return {
     draft: '资料尚未提交审核，请联系平台核对申请情况。',
     pending: '平台正在核验你的入驻意向，请耐心等待。之后可使用注册时的手机号和密码登录达人端查看结果。',
-    approved: '欢迎加入！进入工作台，继续完成实名认证、资料及服务配置。',
+    approved: '欢迎加入！进入工作台，继续完成实名认证、资料及服务设置。',
     rejected: '请根据审核说明联系客服核对资料，无需重新注册账号。',
     suspended: '当前暂不能接单，请联系平台了解原因。',
   }[application.value.status]

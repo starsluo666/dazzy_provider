@@ -1,3 +1,4 @@
+import { responseErrorText, requestFailureText, networkErrorText } from '../utils/userMessages'
 import { getAccessToken, getRefreshToken, handleSessionExpired, updateTokens } from './session'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '')
@@ -39,7 +40,7 @@ function refreshAccessToken(): Promise<RefreshResult> {
         } else {
           resolve({
             status: 'unavailable',
-            message: errorMessage(response.data, `登录状态刷新失败（${response.statusCode}）`),
+            message: responseErrorText(response.data, '暂时无法确认登录状态，请稍后重试'),
           })
         }
       },
@@ -61,16 +62,6 @@ async function retryAfterUnauthorized<T>(retry: () => Promise<T>): Promise<T> {
     throw new Error('登录已过期，请重新登录。')
   }
   throw new Error(result.message)
-}
-
-function errorMessage(body: unknown, fallback: string): string {
-  if (!body || typeof body !== 'object') return fallback
-  for (const value of Object.values(body as Record<string, unknown>)) {
-    if (typeof value === 'string') return value
-    if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
-    if (value && typeof value === 'object') return errorMessage(value, fallback)
-  }
-  return fallback
 }
 
 export function request<T>(path: string, options: RequestOptions = {}, retried = false): Promise<T> {
@@ -110,9 +101,9 @@ export function request<T>(path: string, options: RequestOptions = {}, retried =
             .catch(reject)
           return
         }
-        reject(Object.assign(new Error(errorMessage(response.data, `请求失败（${response.statusCode}）`)), { status: response.statusCode }))
+        reject(Object.assign(new Error(responseErrorText(response.data, requestFailureText(path, response.statusCode))), { status: response.statusCode }))
       },
-      fail: (error) => reject(new Error(error.errMsg || '网络连接失败')),
+      fail: (error) => reject(new Error(networkErrorText(error, path))),
     })
   })
 }
@@ -152,9 +143,9 @@ export function uploadFile<T>(path: string, filePath: string, name = 'file', fil
               .catch(reject)
             return
           }
-          reject(new Error(errorMessage(body, `上传失败（${response.statusCode}）`)))
+          reject(new Error(responseErrorText(body, requestFailureText(path, response.statusCode, true))))
         },
-        fail: (error) => reject(new Error(error.errMsg || '文件上传失败')),
+        fail: (error) => reject(new Error(networkErrorText(error, path, true))),
       } as UniApp.UploadFileOption)
     })
   }

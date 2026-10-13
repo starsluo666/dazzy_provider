@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:user-messages": "node tests/userMessages.test.cjs",
     "dev:h5": "uni",
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:h5": "uni build",
@@ -16,6 +17,7 @@
     "test:cover-crop": "node tests/coverCrop.test.cjs && node tests/photoPreview.test.cjs",
     "test:training": "node tests/training.test.cjs",
     "test:identity-upload": "node tests/identityUpload.test.cjs",
+    "test:identity-verification": "node tests/identityVerification.test.cjs",
     "test:provider-setup:mp": "node tests/providerSetupMp.test.cjs",
     "test:receiving-account:mp": "node tests/receivingAccountMp.test.cjs",
     "test:income-withdrawal": "node tests/incomeWithdrawal.test.cjs",

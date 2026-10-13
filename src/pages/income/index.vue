@@ -16,8 +16,8 @@
         <view v-if="showWithdrawal" class="withdraw-form">
           <text class="withdraw-title">提现金额</text>
           <view class="amount-field"><text>¥</text><input v-model="withdrawAmount" class="amount-input" type="digit" :disabled="busy || !!pendingRequest" placeholder="输入提现金额" aria-label="提现金额" /></view>
-          <text class="ledger-note">手续费由平台承担，仅转入已核验的本人银行卡。T1 为下一工作日，D1 为下一自然日；实际以渠道处理结果为准。</text>
-          <text v-if="pendingRequest" class="ledger-note">上次申请未收到明确响应，将使用原申请标识核实，不会重复发起。</text>
+          <text class="ledger-note">手续费由平台承担，仅转入已确认的本人银行卡。到账时间以实际处理结果为准。</text>
+          <text v-if="pendingRequest" class="ledger-note">上次提现结果暂未确认，请先查询结果，勿重复申请。</text>
           <view class="withdraw-actions"><button class="cash-secondary" :disabled="busy" @tap="showWithdrawal = false">收起</button><button class="cash-primary" :disabled="busy" :loading="busy" @tap="confirmWithdrawal">{{ pendingRequest ? '核实原申请' : '确认提现' }}</button></view>
           <text v-if="cashError" class="cash-error">{{ cashError }}</text>
         </view>
@@ -27,10 +27,10 @@
           <view><text>累计账务结算</text><strong class="strong-text">¥{{ formatAmount(data.summary.settled_amount) }}</strong></view>
         </section>
         <button class="receiving-entry" hover-class="dz-pressed" @tap="openReceivingAccount">
-          <view class="receiving-copy"><text class="receiving-title">收款账户</text><text class="receiving-note">管理本人银行卡 · 查看渠道开通状态</text></view>
+          <view class="receiving-copy"><text class="receiving-title">收款账户</text><text class="receiving-note">管理本人银行卡 · 查看账户开通状态</text></view>
           <text class="receiving-arrow">›</text>
         </button>
-        <text class="ledger-note">订单完成并满足结算条件、渠道分账核验成功后才计入可提现余额。下方账务结算记录不等于余额或银行卡到账。</text>
+        <text class="ledger-note">订单收入结算并确认到账后才计入可提现余额。结算记录不代表可提现余额，也不代表银行卡已到账。</text>
         <template v-if="data.wallet?.withdrawals.length">
           <h2 class="section-title">提现记录</h2>
           <view class="withdraw-record" v-for="item in data.wallet.withdrawals" :key="item.withdrawal_no">

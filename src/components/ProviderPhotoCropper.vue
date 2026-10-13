@@ -10,7 +10,6 @@
       </view>
       <view class="zoom-label"><text>缩放</text><text>{{ zoom }}%</text></view>
       <slider class="crop-slider" :value="zoom" :min="100" :max="300" :disabled="saving || !state" activeColor="#08b8bc" backgroundColor="#dce9e9" block-color="#ffffff" :block-size="24" @changing="changeZoom" @change="changeZoom" />
-      <text class="crop-footnote">统一 5:4 · 相册只保留裁剪结果。请确认取景，保留完整头部。</text>
       <text v-if="error" class="crop-error">{{ error }}</text>
       <view class="crop-actions"><button class="crop-cancel" :disabled="saving" @tap="emit('close')">取消</button><button v-if="loadFailed" class="crop-confirm" @tap="loadPreview">重试加载</button><button v-else class="crop-confirm" :disabled="saving || !state" @tap="save">{{ saving ? '正在保存…' : '确认裁剪' }}</button></view>
     </view>
@@ -92,7 +91,7 @@ onBeforeUnmount(() => { disposed = true; disposePreview() })
 .crop-overlay{position:fixed;z-index:200;inset:0;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));background:rgba(12,30,33,.65)}
 .crop-dialog{box-sizing:border-box;width:100%;max-width:440px;max-height:100%;overflow-y:auto;padding:20px;border-radius:24px;background:#fff;color:#183239}
 .crop-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.crop-title{font-size:19px;font-weight:700}.crop-reset{margin:0;padding:0 8px;background:transparent;color:#087e83;font-size:14px;min-height:44px;line-height:44px}
-.crop-hint,.crop-footnote{display:block;color:#63797f;font-size:13px;line-height:1.6}.crop-hint{margin:4px 0 16px}.crop-footnote{margin:4px 0 14px;font-size:12px}
+.crop-hint{display:block;margin:4px 0 16px;color:#63797f;font-size:13px;line-height:1.6}
 .crop-frame{position:relative;width:100%;height:0;padding-bottom:80%;overflow:hidden;border-radius:12px;background:#e7eeee;touch-action:none;user-select:none;cursor:move}.crop-image{position:absolute;max-width:none;pointer-events:none}.crop-grid{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7)}.grid-v,.grid-h{position:absolute;background:rgba(255,255,255,.5);pointer-events:none}.grid-v{width:1px;top:0;bottom:0}.grid-v.first{left:33.33%}.grid-v.second{left:66.67%}.grid-h{height:1px;left:0;right:0}.grid-h.first{top:33.33%}.grid-h.second{top:66.67%}.crop-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#63797f}
 .zoom-label{display:flex;justify-content:space-between;margin-top:18px;font-size:13px;font-variant-numeric:tabular-nums}.crop-slider{margin:18px 8px}.crop-error{display:block;margin-bottom:12px;color:#b23b35;font-size:13px;line-height:1.5}.crop-actions{display:flex;gap:10px}.crop-cancel,.crop-confirm{display:flex;align-items:center;justify-content:center;margin:0;padding:0 12px;min-height:46px;border:0;border-radius:14px;font-size:15px;line-height:1.3;font-weight:600}.crop-cancel{flex:1;background:#eef4f4;color:#4d676e}.crop-confirm{flex:2;background:#08b8bc;color:#fff}.crop-reset::after,.crop-cancel::after,.crop-confirm::after{display:none}
 .crop-cancel:active,.crop-confirm:active{transform:scale(.98)}

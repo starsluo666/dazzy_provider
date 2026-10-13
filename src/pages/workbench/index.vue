@@ -220,7 +220,7 @@ function reporterCallbacks() {
 }
 
 async function beginReporter(session: ProviderOnlineSession, initialLocation: Awaited<ReturnType<typeof getCurrentProviderLocation>>) {
-  if (!session.session_id) throw new Error('接单会话创建失败，请重试')
+  if (!session.session_id) throw new Error('暂时无法开启接单，请重试')
   const mode = await startLocationReporting({
     sessionId: session.session_id,
     intervalSeconds: session.recommended_report_interval_seconds,
@@ -229,8 +229,8 @@ async function beginReporter(session: ProviderOnlineSession, initialLocation: Aw
   })
   if (mode === 'foreground') {
     locationWarning.value = session.online_timeout_minutes === 0
-      ? '当前为前台定位，离开小程序后位置将停止更新；停止接单时请手动下线'
-      : '当前为前台定位，离开小程序后可能自动离线'
+      ? '离开小程序后位置将停止更新；停止接单时请手动下线'
+      : '离开小程序后位置可能停止更新，并自动下线'
   }
   if (mode === 'polling') locationWarning.value = '当前设备不支持持续定位，将按间隔刷新位置'
 }

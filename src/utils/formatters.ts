@@ -1,4 +1,5 @@
 import { businessTimeParts } from './businessTime'
+import { publicErrorText } from './userMessages'
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
@@ -29,5 +30,5 @@ export function formatOrderTimeRange(startsAt: string, endsAt: string, includeYe
 }
 
 export function getErrorMessage(reason: unknown, fallback = '操作失败，请稍后重试') {
-  return reason instanceof Error && reason.message ? reason.message : fallback
+  return publicErrorText(reason instanceof Error ? reason.message : '', fallback)
 }

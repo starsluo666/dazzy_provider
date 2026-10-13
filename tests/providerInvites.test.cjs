@@ -8,6 +8,7 @@ function load(relative, dependencies = {}, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText
   const context = { exports: {}, __env: { DEV: false }, ...globals, require: key => {
+    if (key.endsWith('userMessages')) return require('./userMessages.fixture.cjs')
     assert.ok(key in dependencies, `Unexpected dependency: ${key}`)
     return dependencies[key]
   } }

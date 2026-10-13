@@ -50,12 +50,12 @@ export function providerSetup(data?: ProviderSetupData | null) {
       action: { todo: '去完善', pending: '审核中', done: '已完成', rejected: '去修改' }[profile],
     },
     {
-      id: 'services', title: '配置服务', state: services,
+      id: 'services', title: '设置服务', state: services,
       description: {
         todo: '至少添加并启用一项服务', pending: '服务已提交，等待平台审核',
         done: '已有启用中的服务项目', rejected: '服务未通过，请修改后重新提交',
       }[services],
-      action: { todo: '去配置', pending: '审核中', done: '已就绪', rejected: '去修改' }[services],
+      action: { todo: '去设置', pending: '审核中', done: '已就绪', rejected: '去修改' }[services],
     },
   ]
   const submitted = steps.filter(step => step.state === 'pending' || step.state === 'done').length

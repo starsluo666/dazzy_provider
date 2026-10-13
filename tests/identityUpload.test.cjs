@@ -12,6 +12,7 @@ function load(relative, dependencies, globals = {}) {
   const context = {
     exports: {}, __env: { VITE_API_BASE_URL: '/api/v1', DEV: false }, ...globals,
     require: name => {
+      if (name.endsWith('userMessages')) return require('./userMessages.fixture.cjs')
       assert.ok(name in dependencies, `Unexpected import: ${name}`)
       return dependencies[name]
     },
@@ -87,7 +88,10 @@ async function main() {
 
   const page = fs.readFileSync(path.resolve(__dirname, '../src/pages/identity/index.vue'), 'utf8')
   assert.match(page, /uploadProviderIdentityPhoto\(tempFilePaths\[0\], file, key\)/)
-  assert.match(page, /previews\[key\] = result\.data\.url/)
+  assert.ok(page.includes("saveProviderIdentity({ recognition_mode: 'photo', [`${key}_id`]: result.data.id })"))
+  assert.match(page, /previews\.identity_front_photo=value\.identity_front_photo_url/)
+  assert.match(page, /previews\.identity_back_photo=value\.identity_back_photo_url/)
+  assert.match(page, /previews\.identity_face_photo=value\.identity_face_photo_url/)
   assert.match(page, /新上传的身份证正反面自动添加“仅用于达人验证”水印/)
   console.log('PASS identity uploads: per-photo role, signed preview, auth retry, server errors and other upload callers')
 }

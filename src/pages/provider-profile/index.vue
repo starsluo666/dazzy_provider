@@ -21,16 +21,16 @@
 
         <section class="gallery-panel">
           <view class="panel-heading"><strong class="strong-text">照片与视频</strong><text>{{ media.length }}/9</text></view>
-          <text class="gallery-tip">每张照片统一裁剪为5:4，第一张作为封面；轮播及放大均展示裁剪后的照片。最多9个素材，其中视频最多2个、每个不超过10秒；照片≤8MB，支持苹果 HEIC/HEIF；MP4/MOV视频≤50MB。</text>
-          <text v-if="uncroppedCount" class="gallery-warning">还有 {{ uncroppedCount }} 张旧照片待裁剪。请逐张确认取景后再提交审核，当前线上资料不受影响。</text>
-          <text v-if="hasUnverifiedVideo" class="gallery-tip">旧视频尚未核验时长，下次提交资料前请移除并重新上传不超过10秒的视频。当前已发布的资料不会因此被删除。</text>
+          <text class="gallery-tip">第一张作为封面，最多9个素材，其中视频最多2个（每个不超过10秒）。</text>
+          <text v-if="uncroppedCount" class="gallery-warning">存在尺寸不合适的照片，请裁剪。</text>
+          <text v-if="hasUnverifiedVideo" class="gallery-tip">请移除并重新上传不超过10秒的视频。</text>
           <view class="gallery-grid">
             <!-- 小程序原生 button 复用后可能保留换位前的 disabled 状态，位置变化时重建卡片。 -->
             <view v-for="(item, index) in media" :key="`${item.id}-${index}`" class="gallery-item">
               <view class="gallery-visual"><image v-if="item.type === 'image'" :src="item.url" mode="aspectFill" @tap="previewPhoto(item.url)" />
               <video v-else :id="`profile-video-${item.id}`" :src="item.url" :autoplay="false" object-fit="contain" @play="pauseVideos(item.id)" /></view>
               <text class="media-label">{{ index === 0 ? '列表封面' : item.type === 'video' ? '视频' : '照片' }}{{ item.type === 'image' ? item.cropped ? ' · 5:4' : ' · 待裁剪' : '' }}</text>
-              <button v-if="item.type === 'image'" class="crop-photo" :disabled="mediaLocked" @tap="openCrop(item.id)">{{ item.cropped ? '重新裁剪' : '裁剪为 5:4' }}</button>
+              <button v-if="item.type === 'image'" class="crop-photo" :disabled="mediaLocked" @tap="openCrop(item.id)">裁剪</button>
               <view class="media-actions">
                 <button :disabled="mediaLocked || !canMoveMedia(item.id, -1)" aria-label="前移" @tap="moveMedia(item.id, -1)"><text>前移</text></button>
                 <button :disabled="mediaLocked || !canMoveMedia(item.id, 1)" aria-label="后移" @tap="moveMedia(item.id, 1)"><text>后移</text></button>
@@ -241,7 +241,7 @@ async function save() {
   if (form.display_name.trim().length < 2) return uni.showToast({ title: '达人名称至少2个字', icon: 'none' })
   if (form.bio.trim().length < 10) return uni.showToast({ title: '达人简介至少10个字', icon: 'none' })
   if (!media.value.length || media.value[0].type !== 'image') return uni.showToast({ title: '请上传一张封面照片', icon: 'none' })
-  if (uncroppedCount.value) return uni.showToast({ title: '请先将每张照片裁剪为5:4', icon: 'none' })
+  if (uncroppedCount.value) return uni.showToast({ title: '请先裁剪尺寸不合适的照片', icon: 'none' })
   if (videoCount.value > 2) return uni.showToast({ title: '最多保留2个视频，请先移除多余视频', icon: 'none' })
   saving.value = true
   try {

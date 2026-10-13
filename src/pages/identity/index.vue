@@ -26,13 +26,13 @@
             <text class="status-description">{{ statusCopy }}</text>
             <view class="status-progress">
               <view
-                v-for="(step, index) in progressSteps"
-                :key="step"
+                v-for="(item, index) in photoItems"
+                :key="item.key"
                 class="progress-step"
-                :class="{ complete: index < statusProgressCount }"
+                :class="{ complete: locked || Boolean(item.id) }"
               >
                 <view class="progress-line" />
-                <text>{{ step }}</text>
+                <text>{{ progressSteps[index] }}</text>
               </view>
             </view>
           </view>
@@ -41,32 +41,6 @@
         <view v-if="data.identity_status === 'rejected'" class="reject-card">
           <text class="reject-title">未通过原因</text>
           <text class="reject-copy">{{ data.identity_rejection_reason }}</text>
-        </view>
-
-        <view v-if="data.identity_verification && (data.identity_verification.enabled || data.identity_verification.required)" class="privacy-card">
-          <view class="privacy-title"><text>{{ data.identity_verification.status_label }}</text></view>
-          <text class="privacy-copy">{{ data.identity_verification.message }}</text>
-          <text class="privacy-copy">身份证验真不等于认证完成，其他材料仍需人工审核。</text>
-          <button v-if="checkingIdentity" class="secondary-button" @tap="load">刷新验真结果</button>
-        </view>
-
-        <view class="form-card">
-          <view class="form-row">
-            <text class="form-label">真实姓名</text>
-            <view class="form-value">
-              <text class="locked-value">{{ recognizedIdentity ? data.identity_real_name : '验真通过后自动识别' }}</text>
-              <text class="form-helper">与入驻申请姓名核对，无需重复填写</text>
-            </view>
-            <view v-if="locked" class="lock-icon" />
-          </view>
-          <view class="form-row form-row-tall">
-            <text class="form-label">身份证号码</text>
-            <view class="form-value">
-              <text class="locked-value identity-number">{{ recognizedIdentity ? data.identity_number_masked : '验真通过后自动识别' }}</text>
-              <text class="form-helper">仅展示脱敏号码，不支持手动修改</text>
-            </view>
-            <view v-if="locked" class="lock-icon" />
-          </view>
         </view>
 
         <view class="materials-card">
@@ -79,6 +53,7 @@
             :key="item.key"
             class="material-row dz-tappable"
             :class="{ 'material-row-locked': locked }"
+            :aria-disabled="busy || locked || checkingIdentity"
             role="button"
             hover-class="dz-pressed"
             @tap="choosePhoto(item.key)"
@@ -103,11 +78,28 @@
           </view>
         </view>
 
+        <view class="form-card">
+          <view class="form-row">
+            <text class="form-label">真实姓名</text>
+            <view class="form-value">
+              <text class="locked-value">{{ recognizedIdentity ? data.identity_real_name : '上传后自动识别' }}</text>
+              <text class="form-helper">与入驻申请姓名核对，无需重复填写</text>
+            </view>
+          </view>
+          <view class="form-row form-row-tall">
+            <text class="form-label">身份证号码</text>
+            <view class="form-value">
+              <text class="locked-value identity-number">{{ recognizedIdentity ? data.identity_number_masked : '上传后自动识别' }}</text>
+              <text class="form-helper">仅展示脱敏号码，不支持手动修改</text>
+            </view>
+          </view>
+        </view>
+
         <view class="privacy-card">
           <view class="privacy-title"><view class="lock-icon privacy-lock" /><text>隐私保护说明</text></view>
-          <text class="privacy-copy">新上传的身份证正反面自动添加“仅用于达人验证”水印。认证材料使用私有存储；公开页面只展示认证结果，不展示姓名、证件号码或原图。</text>
-          <text class="privacy-copy">本人自拍仅供客服人工核对，不进行活体检测，也不提交腾讯云身份证验真接口。</text>
-          <text v-if="!locked && !data.identity_verification?.enabled" class="privacy-copy">身份证自动识别与验真暂未开放，可先保存照片，稍后重试或联系客服。</text>
+          <text class="privacy-copy">新上传的身份证正反面自动添加“仅用于达人验证”水印。认证资料不公开展示，仅用于身份审核。</text>
+          <text class="privacy-copy">本人自拍仅供客服人工审核，不进行活体检测或自动人脸比对。</text>
+          <text v-if="!locked && !data.identity_verification?.enabled" class="privacy-copy">身份验证暂不可用，已上传的照片会自动保存，请稍后重试或联系客服。</text>
           <text v-if="data.identity_verification?.enabled" class="privacy-copy">{{ data.identity_verification.notice }}</text>
         </view>
       </template>
@@ -115,8 +107,7 @@
 
     <view v-if="data && !loading && !error" class="identity-footer">
       <view v-if="!locked" class="footer-actions">
-        <button class="secondary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || submitting || uploadingAny" @tap="save()">保存资料</button>
-        <button class="primary-button dz-tappable" hover-class="dz-pressed" :disabled="saving || submitting || uploadingAny" @tap="submit">{{ submitting ? '提交中…' : '提交认证' }}</button>
+        <button class="primary-button dz-tappable" hover-class="dz-pressed" :disabled="busy || checkingIdentity" @tap="submit">{{ submitting ? '提交中…' : uploadingAny ? '正在上传…' : verifying || checkingIdentity ? '正在识别…' : '提交认证' }}</button>
       </view>
       <view v-else class="locked-note"><text>{{ lockedFooterCopy }}</text></view>
     </view>
@@ -125,28 +116,32 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import NetworkState from '@/components/NetworkState.vue'
-import { getProviderIdentity, saveProviderIdentity, submitProviderIdentity, uploadProviderIdentityPhoto } from '@/services/providers'
+import { getProviderIdentity, saveProviderIdentity, verifyProviderIdentity, submitProviderIdentity, uploadProviderIdentityPhoto } from '@/services/providers'
 import { guardCurrentPage } from '@/services/session'
 import type { ProviderIdentity } from '@/types/api'
 import { getErrorMessage } from '@/utils/formatters'
 
 type PhotoKey = 'identity_front_photo' | 'identity_back_photo' | 'identity_face_photo'
-const loading = ref(true); const saving = ref(false); const submitting = ref(false); const error = ref('')
+const loading = ref(true); const submitting = ref(false); const error = ref('')
+const verifying = ref(false); const picking = ref(false)
+let acceptedConsentVersion = ''
+let disposed = false
 const uploading = reactive<Record<PhotoKey, boolean>>({
   identity_front_photo: false,
   identity_back_photo: false,
   identity_face_photo: false,
 })
 const uploadingAny = computed(() => Object.values(uploading).some(Boolean))
+const busy = computed(() => loading.value || submitting.value || verifying.value || picking.value || uploadingAny.value)
 const data = ref<ProviderIdentity | null>(null)
 const form = reactive({ identity_front_photo_id: null as string | null, identity_back_photo_id: null as string | null, identity_face_photo_id: null as string | null })
 const previews = reactive({ identity_front_photo: '', identity_back_photo: '', identity_face_photo: '' })
-const checkingIdentity = computed(() => data.value?.identity_verification?.status === 'processing')
-const locked = computed(() => checkingIdentity.value || data.value?.identity_status === 'pending' || data.value?.identity_status === 'verified')
-const statusHeading = computed(() => checkingIdentity.value ? '身份证验真中' : ({
-  unverified: '未认证',
+const checkingIdentity = computed(() => verifying.value || data.value?.identity_verification?.status === 'processing')
+const locked = computed(() => data.value?.identity_status === 'pending' || data.value?.identity_status === 'verified')
+const statusHeading = computed(() => checkingIdentity.value ? '身份证识别中' : recognizedIdentity.value && !locked.value ? '待提交认证' : ({
+  unverified: '请上传身份证照片',
   pending: '审核中',
   verified: '已认证',
   rejected: '认证未通过',
@@ -159,7 +154,6 @@ const photoItems = computed(() => [
   { key: 'identity_face_photo' as PhotoKey, label: '本人自拍', help: '正脸清晰，仅供客服人工审核', id: form.identity_face_photo_id, url: previews.identity_face_photo, glyph: 'face-glyph' },
 ])
 const completedMaterialCount = computed(() => photoItems.value.filter((item) => Boolean(item.id)).length)
-const statusProgressCount = computed(() => locked.value ? 3 : completedMaterialCount.value)
 const materialProgress = computed(() => {
   if (data.value?.identity_status === 'verified') return '核验完成'
   if (data.value?.identity_status === 'pending') return '审核中'
@@ -169,7 +163,7 @@ const materialProgress = computed(() => {
 const recognizedIdentity = computed(() => Boolean(
   data.value?.identity_real_name && data.value?.identity_number_masked
   && (data.value.identity_verification?.status === 'passed' || ['pending', 'verified'].includes(data.value.identity_status))
-  && photoItems.value.every(item => item.id === data.value?.[`${item.key}_id` as keyof ProviderIdentity]),
+  && form.identity_front_photo_id === data.value?.identity_front_photo_id,
 ))
 const lockedFooterCopy = computed(() => checkingIdentity.value ? '身份证验真中 · 请稍后刷新结果' : data.value?.identity_status === 'pending'
   ? '资料审核中 · 审核完成前暂时无法修改'
@@ -177,49 +171,75 @@ const lockedFooterCopy = computed(() => checkingIdentity.value ? '身份证验�
 
 function back(){ uni.navigateBack() }
 function apply(value: ProviderIdentity){ data.value=value; form.identity_front_photo_id=value.identity_front_photo_id; form.identity_back_photo_id=value.identity_back_photo_id; form.identity_face_photo_id=value.identity_face_photo_id; previews.identity_front_photo=value.identity_front_photo_url||''; previews.identity_back_photo=value.identity_back_photo_url||''; previews.identity_face_photo=value.identity_face_photo_url||'' }
-async function load(){ loading.value=true; error.value=''; try{ apply((await getProviderIdentity()).data) }catch(reason){ error.value=getErrorMessage(reason) }finally{ loading.value=false } }
-function payload(){ return { recognition_mode: 'photo', identity_front_photo_id: form.identity_front_photo_id, identity_back_photo_id: form.identity_back_photo_id, identity_face_photo_id: form.identity_face_photo_id } }
-async function save(silent=false){ if(saving.value)return false; saving.value=true; try{ apply((await saveProviderIdentity(payload())).data); if(!silent)uni.showToast({title:'资料已保存',icon:'success'}); return true }catch(reason){ uni.showToast({title:getErrorMessage(reason),icon:'none'}); return false }finally{ saving.value=false } }
-async function submit() {
-  if (submitting.value || saving.value || uploadingAny.value || locked.value) return
+async function load(){ loading.value=true; error.value=''; try{ const response = await getProviderIdentity(); if (!disposed) apply(response.data) }catch(reason){ if (!disposed) error.value=getErrorMessage(reason) }finally{ loading.value=false } }
+async function refreshAfterError() {
+  try { const response = await getProviderIdentity(); if (!disposed) apply(response.data) } catch { /* Keep the last saved state; never auto-retry verification. */ }
+}
+async function verifyFront() {
+  if (disposed || busy.value || locked.value || checkingIdentity.value) return
+  const frontId = form.identity_front_photo_id
+  if (!frontId) return uni.showToast({ title: '请上传身份证照片', icon: 'none' })
   if (!data.value?.identity_verification?.enabled) {
-    return uni.showModal({ title: '验真暂未开放', content: '可以先保存照片，稍后重试或联系客服。', showCancel: false })
+    return uni.showToast({ title: '身份验证暂不可用，请稍后重试', icon: 'none' })
   }
+  verifying.value = true
+  try {
+    const verification = data.value.identity_verification
+    if (acceptedConsentVersion !== verification.consent_version) {
+      const accepted = await new Promise<boolean>((resolve, reject) => uni.showModal({
+        title: '身份证验真授权', content: verification.notice,
+        confirmText: '同意验真', cancelText: '暂不验真',
+        success: result => resolve(result.confirm === true), fail: reject,
+      })).catch(() => {
+        // A failed native dialog is not consent. Preserve the draft and allow retry.
+        if (!disposed) uni.showToast({ title: '授权弹窗未能打开，请重试', icon: 'none' })
+        return false
+      })
+      if (!accepted || disposed) return
+      acceptedConsentVersion = verification.consent_version
+    }
+    const response = await verifyProviderIdentity(frontId, acceptedConsentVersion)
+    if (!disposed && form.identity_front_photo_id === frontId) apply(response.data)
+  } catch (reason) {
+    if (!disposed) {
+      uni.showToast({ title: getErrorMessage(reason, '识别未完成，请重新上传人像面'), icon: 'none' })
+      await refreshAfterError()
+    }
+  } finally { verifying.value = false }
+}
+async function submit() {
+  if (disposed || busy.value || locked.value || checkingIdentity.value) return
   if (!form.identity_front_photo_id || !form.identity_back_photo_id || !form.identity_face_photo_id) {
     return uni.showToast({ title: '请上传全部认证材料', icon: 'none' })
   }
+  if (!recognizedIdentity.value || data.value?.identity_verification?.status !== 'passed') {
+    return uni.showToast({ title: '请重新上传身份证人像面完成识别', icon: 'none' })
+  }
   submitting.value = true
   try {
-    let consentVersion = ''
-    if (data.value?.identity_verification?.enabled || data.value?.identity_verification?.required) {
-      const verification = data.value.identity_verification
-      const accepted = await new Promise<boolean>((resolve) => uni.showModal({
-        title: '身份证验真授权', content: verification.notice,
-        confirmText: '同意并提交', cancelText: '暂不提交',
-        success: result => resolve(result.confirm), fail: () => resolve(false),
-      }))
-      if (!accepted) return
-      consentVersion = verification.consent_version
-    }
-    if (!await save(true)) return
-    apply((await submitProviderIdentity(consentVersion)).data)
+    const response = await submitProviderIdentity()
+    if (disposed) return
+    apply(response.data)
     uni.showToast({ title: '已提交审核', icon: 'success' })
   } catch (reason) {
-    uni.showModal({ title: '认证提交未通过', content: getErrorMessage(reason), showCancel: false })
-    // A client timeout may happen after the server has already recorded a result.
-    try { apply((await getProviderIdentity()).data) } catch { /* Keep saved inputs on network failure. */ }
+    if (!disposed) {
+      uni.showModal({ title: '认证提交未通过', content: getErrorMessage(reason), showCancel: false })
+      await refreshAfterError()
+    }
   } finally {
     submitting.value = false
   }
 }
 function choosePhoto(key: PhotoKey) {
-  if (locked.value || submitting.value || uploading[key]) return
-  uni.chooseImage({
+  if (disposed || busy.value || locked.value || checkingIdentity.value) return
+  picking.value = true
+  try { uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async ({ tempFilePaths, tempFiles }) => {
-      if (uploading[key]) return
+      picking.value = false
+      if (disposed || uploadingAny.value) return
       if (!tempFilePaths[0]) {
         uni.showToast({ title: '未获取到图片，请重试', icon: 'none' })
         return
@@ -230,31 +250,43 @@ function choosePhoto(key: PhotoKey) {
         return
       }
       uploading[key] = true
+      let saved = false
       try {
         const result = await uploadProviderIdentityPhoto(tempFilePaths[0], file, key)
-        const idKey = `${key}_id` as keyof typeof form
-        form[idKey] = result.data.id
-        previews[key] = result.data.url
+        if (disposed) return
+        const response = await saveProviderIdentity({ recognition_mode: 'photo', [`${key}_id`]: result.data.id })
+        if (disposed) return
+        apply(response.data)
+        saved = true
       } catch (reason) {
-        uni.showToast({ title: getErrorMessage(reason), icon: 'none' })
+        if (!disposed) {
+          uni.showToast({ title: getErrorMessage(reason, '照片保存失败，请重新上传'), icon: 'none' })
+          await refreshAfterError()
+        }
       } finally {
         uploading[key] = false
       }
+      if (saved && key === 'identity_front_photo') await verifyFront()
     },
     fail: ({ errMsg }) => {
-      if (!/cancel/i.test(errMsg || '')) {
+      picking.value = false
+      if (!disposed && !/cancel/i.test(errMsg || '')) {
         uni.showToast({ title: '打开相册失败，请重试', icon: 'none' })
       }
     },
-  })
+  }) } catch {
+    picking.value = false
+    if (!disposed) uni.showToast({ title: '打开相册失败，请重试', icon: 'none' })
+  }
 }
 onLoad(() => { if (guardCurrentPage()) void load() })
+onUnload(() => { disposed = true })
 </script>
 
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
 
-/* 认证页 V2：按认证状态、身份信息、材料和隐私说明建立清晰的纵向层级。 */
+/* 认证页：先上传材料，再查看识别信息，最后提交人工审核。 */
 .identity-page{
   min-height:100vh;
   padding-bottom:calc(136rpx + env(safe-area-inset-bottom));
@@ -280,7 +312,7 @@ onLoad(() => { if (guardCurrentPage()) void load() })
 .nav-back,.nav-space{width:88rpx;height:80rpx;flex:0 0 88rpx}
 .nav-back{margin:0;padding:0;border:0;background:transparent;font-size:54rpx;line-height:76rpx;text-align:left}
 .nav-space{display:block}
-.nav-back::after,.material-row::after,.secondary-button::after,.primary-button::after{display:none}
+.nav-back::after,.material-row::after,.primary-button::after{display:none}
 .identity-content{padding-top:18rpx;padding-bottom:24rpx}
 
 .status-card{
@@ -448,11 +480,12 @@ onLoad(() => { if (guardCurrentPage()) void load() })
   background:rgba(250,253,253,.96);
   box-shadow:0 -12rpx 38rpx rgba(24,55,58,.085);
 }
-.footer-actions{display:grid;gap:16rpx;grid-template-columns:1fr 1.35fr}
-.secondary-button,.primary-button{
+.footer-actions{display:flex}
+.primary-button{
   display:flex;
   width:100%;
   height:86rpx;
+  min-height:44px;
   align-items:center;
   justify-content:center;
   box-sizing:border-box;
@@ -463,7 +496,6 @@ onLoad(() => { if (guardCurrentPage()) void load() })
   font-weight:750;
   line-height:1;
 }
-.secondary-button{border:0;color:$dz-text-primary;background:#f1f5f5}
 .primary-button{border:0;color:#fff;background:$dz-brand;box-shadow:$dz-shadow-control}
 .locked-note{display:flex;min-height:70rpx;align-items:center}
 .locked-note text{width:340rpx;padding:13rpx 20rpx;border-radius:18rpx;color:$dz-text-secondary;background:#f1f5f5;font-size:22rpx;font-weight:650;line-height:1.45}

@@ -51,9 +51,14 @@ export const getProviderIdentity = () =>
 export const saveProviderIdentity = (data: Record<string, unknown>) =>
   request<DataResponse<ProviderIdentity>>('/providers/me/identity/', { method: 'PATCH', data })
 
-export const submitProviderIdentity = (consentVersion = '') =>
+export const verifyProviderIdentity = (frontPhotoId: string, consentVersion: string) =>
+  request<DataResponse<ProviderIdentity>>('/providers/me/identity/verify/', {
+    method: 'POST', data: { identity_front_photo_id: frontPhotoId, consent_version: consentVersion }, timeout: 60000,
+  })
+
+export const submitProviderIdentity = () =>
   request<DataResponse<ProviderIdentity>>('/providers/me/identity/submit/', {
-    method: 'POST', data: { consent_version: consentVersion, recognition_mode: 'photo' }, timeout: 60000,
+    method: 'POST', data: { recognition_mode: 'photo', verification_mode: 'preverified' }, timeout: 30000,
   })
 
 export type IdentityPhotoKind = 'identity_front_photo' | 'identity_back_photo' | 'identity_face_photo'

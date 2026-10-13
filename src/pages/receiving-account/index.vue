@@ -23,7 +23,7 @@
           <view class="steps">
             <view class="step" :class="{ complete: account.identity_verified }"><text class="step-mark">{{ account.identity_verified ? '✓' : '1' }}</text><text>平台实名</text></view>
             <view class="step" :class="{ complete: account.materials_saved }"><text class="step-mark">{{ account.materials_saved ? '✓' : '2' }}</text><text>保存资料</text></view>
-            <view class="step" :class="{ complete: account.channel_status === 'active' }"><text class="step-mark">{{ account.channel_status === 'active' ? '✓' : '3' }}</text><text>渠道开通</text></view>
+            <view class="step" :class="{ complete: account.channel_status === 'active' }"><text class="step-mark">{{ account.channel_status === 'active' ? '✓' : '3' }}</text><text>账户开通</text></view>
           </view>
         </view>
 
@@ -81,7 +81,7 @@
               <view class="area-field"><text class="field-label">银行所在省份</text><picker :range="regions" range-key="name" :value="provinceIndex" :disabled="busy" @change="selectProvince"><view class="date-field"><text>{{ form.bank_province || '选择省份' }}</text><text class="chevron">›</text></view></picker></view>
               <view class="area-field"><text class="field-label">银行所在城市</text><picker :range="cities" range-key="name" :value="cityIndex" :disabled="busy || !form.bank_province_code" @change="selectCity"><view class="date-field"><text>{{ form.bank_city || '选择城市' }}</text><text class="chevron">›</text></view></picker></view>
             </view>
-            <view class="field"><text class="field-label">银行卡预留手机号</text><input v-model="form.mobile" class="field-input" type="number" :maxlength="11" :disabled="busy" :placeholder="account.materials_saved ? account.mobile_masked : '输入银行预留的本人手机号'" placeholder-class="field-placeholder" aria-label="银行卡预留手机号" /><text class="helper">同时用于渠道开户联系，请确认与银行预留信息一致。</text></view>
+            <view class="field"><text class="field-label">银行卡预留手机号</text><input v-model="form.mobile" class="field-input" type="number" :maxlength="11" :disabled="busy" :placeholder="account.materials_saved ? account.mobile_masked : '输入银行预留的本人手机号'" placeholder-class="field-placeholder" aria-label="银行卡预留手机号" /><text class="helper">同时用于开户联系，请确认与银行预留信息一致。</text></view>
           </view>
 
           <view class="privacy-card">
@@ -95,7 +95,7 @@
           <text class="save-note">保存不会开户、绑卡或扣款</text>
         </template>
         <view v-if="account.materials_saved" class="form-card channel-card">
-          <text class="section-title">申请渠道开户</text>
+          <text class="section-title">申请收款账户</text>
           <text v-if="account.can_submit" class="helper">将提交上方已保存的本人资料。若刚修改了输入内容，请先保存再申请。</text>
           <template v-if="account.can_submit">
             <text class="helper">{{ account.onboarding_notice }}</text>
@@ -103,15 +103,14 @@
             <text v-if="hasUnsavedChanges" class="form-error">有尚未保存的修改，请先保存资料，再申请开户。</text>
             <button class="save-button" :class="{ 'is-disabled': busy || !onboardingConsent || hasUnsavedChanges }" :disabled="busy || !onboardingConsent || hasUnsavedChanges" :loading="submitting" @tap="submit">{{ submitting ? '正在提交…' : account.can_refresh ? '确认手动提现授权并继续' : '申请开户并开通手动提现' }}</button>
           </template>
-          <text v-else-if="!account.onboarding_enabled && !account.can_refresh" class="helper">平台尚未启用渠道开户。资料已安全保存，不会自动提交，请联系平台完成配置。</text>
+          <text v-else-if="!account.onboarding_enabled && !account.can_refresh" class="helper">收款账户暂未开放申请。资料已保存，不会自动提交，请联系客服。</text>
           <text v-else class="helper">{{ account.channel_notice }}</text>
           <view v-if="account.can_refresh" class="channel-checks">
             <view class="channel-check"><text>本人提现卡</text><text :class="{ 'check-ready': account.card_status === 'S' }">{{ account.card_status === 'S' ? '已确认' : account.card_status === 'F' ? '未通过，请核实' : '待核实' }}</text></view>
-            <view class="channel-check"><text>手动提现配置</text><text :class="{ 'check-ready': account.cash_status === 'S' }">{{ account.cash_status === 'S' ? '已确认' : account.cash_status === 'F' ? '未通过，请核实' : '待核实' }}</text></view>
-            <view class="channel-check"><text>自动结算</text><text :class="{ 'check-ready': account.automatic_settlement_disabled === true }">{{ account.automatic_settlement_disabled === true ? '按未开启处理' : account.automatic_settlement_disabled === false ? '仍开启，需关闭' : '关闭状态待核实' }}</text></view>
+            <view class="channel-check"><text>提现账户</text><text :class="{ 'check-ready': account.channel_status === 'active' }">{{ account.channel_status === 'active' ? '已开通' : ['attention', 'rejected'].includes(account.channel_status) ? '需处理' : '待确认' }}</text></view>
           </view>
-          <button v-if="account.can_refresh" class="secondary-button" :disabled="busy" :loading="refreshing" @tap="refresh">{{ refreshing ? '正在查询渠道…' : '刷新渠道状态' }}</button>
-          <text class="helper">各项核验及授权满足条件后才可提现。订单分账核验后先计入达人余额，再由你主动申请提现；开通本身不代表银行卡已到账。</text>
+          <button v-if="account.can_refresh" class="secondary-button" :disabled="busy" :loading="refreshing" @tap="refresh">{{ refreshing ? '正在查询…' : '刷新开户状态' }}</button>
+          <text class="helper">收入计入可提现余额后，由你主动申请提现。账户开通后，是否可提现请查看收入页；开通不代表银行卡已到账。</text>
         </view>
         <text v-if="formError" class="form-error" role="alert">{{ formError }}</text>
         <button v-if="account.can_clear" class="clear-button" :disabled="busy" :loading="clearing" hover-class="dz-pressed" @tap="confirmClear">清除已保存的收款资料</button>
@@ -192,7 +191,7 @@ async function save() {
   try {
     const result = await saveProviderReceivingAccount({ ...form, cert_end_date: form.cert_long_term ? null : form.cert_end_date, consent_accepted: true, consent_version: account.value.consent_version })
     applyAccount(result.data)
-    uni.showToast({ title: '资料已保存，待渠道开通', icon: 'none' })
+    uni.showToast({ title: '资料已保存，待账户开通', icon: 'none' })
   } catch (reason) { formError.value = getErrorMessage(reason, '保存失败，请稍后再试') }
   finally { saving.value = false }
 }
@@ -200,14 +199,14 @@ async function submit() {
   if (busy.value || !onboardingConsent.value || hasUnsavedChanges.value || !account.value?.can_submit) return
   submitting.value = true; formError.value = ''
   try { applyAccount((await submitProviderReceivingAccount(account.value.onboarding_consent_version)).data) }
-  catch (reason) { formError.value = getErrorMessage(reason, '渠道结果尚未确认，请刷新状态后再操作'); await load() }
+  catch (reason) { formError.value = getErrorMessage(reason, '开户结果暂未确认，请刷新状态后再操作'); await load() }
   finally { submitting.value = false }
 }
 async function refresh() {
   if (busy.value || !account.value?.can_refresh) return
   refreshing.value = true; formError.value = ''
   try { applyAccount((await refreshProviderReceivingAccount()).data) }
-  catch (reason) { formError.value = getErrorMessage(reason, '暂时无法查询渠道，请稍后刷新') }
+  catch (reason) { formError.value = getErrorMessage(reason, '暂时无法查询开户结果，请稍后刷新') }
   finally { refreshing.value = false }
 }
 function confirmClear() {

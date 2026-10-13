@@ -7,7 +7,7 @@
       <template v-else-if="data">
         <view class="card hero"><text class="eyebrow">推荐新伙伴</text><text class="title">一起成为乐搭伴达人</text><text class="description">新朋友注册并提交完整入驻意向后，记一次邀请奖励。经平台财务核验后人工打款。</text>
           <view class="reward"><text>当前每位奖励</text><text class="amount">{{ money(data.reward_amount) }}</text></view>
-          <template v-if="data.enabled && data.source"><image class="qr" :src="data.qr_data" mode="aspectFit" :show-menu-by-longpress="true" /><text class="code">专属邀请码 {{ data.source.code }}</text><button class="primary" @tap="copyLink">复制邀请链接</button><text class="hint">分享二维码或链接，新朋友扫码即可填写注册与入驻资料。此二维码打开用户端 H5 的专属邀请页，不是小程序码；初审通过后前往达人端完善接单资料。</text></template>
+          <template v-if="data.enabled && data.source"><image class="qr" :src="data.qr_data" mode="aspectFit" :show-menu-by-longpress="true" /><text class="code">专属邀请码 {{ data.source.code }}</text><button class="primary" @tap="copyLink">复制邀请链接</button><text class="hint">分享二维码或链接，新朋友扫码即可打开邀请网页，填写注册与入驻资料；初审通过后前往达人端完善接单资料。</text></template>
           <text v-else class="notice">邀请活动暂未开放，请留意平台通知。</text>
         </view>
         <view class="summary"><view v-for="status in ['pending', 'approved', 'paid']" :key="status" class="metric"><text>{{ labels[status] }}</text><text class="metric-value">{{ money(data.summary.find(s => s.status === status)?.amount || 0) }}</text></view></view>

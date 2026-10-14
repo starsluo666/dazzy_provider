@@ -1,6 +1,12 @@
 import type { DataResponse } from '@/types/api'
 
 import { request } from './http'
+import type { ServiceCity } from '@/utils/serviceCities'
+
+export async function getServiceCities(): Promise<ServiceCity[]> {
+  const response = await request<DataResponse<{ items: ServiceCity[] }>>('/locations/cities/', { skipAuth: true })
+  return response.data.items
+}
 
 export interface ReverseGeocodedLocation {
   name: string

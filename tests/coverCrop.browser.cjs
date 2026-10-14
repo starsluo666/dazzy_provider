@@ -46,6 +46,7 @@ async function main() {
           if (req.method() === 'PATCH') { const payload = req.postDataJSON(); saves.push(payload); profile = { ...profile, media: payload.media_ids.map(id => photos.get(id)), lifestyle_photo_id: payload.media_ids[0], lifestyle_photo_url: photos.get(payload.media_ids[0]).url, review_status: 'pending' } }
           return route.fulfill({ json: { data: profile } })
         }
+        if (url.pathname.endsWith('/locations/cities/')) return route.fulfill({ json: { data: { items: [{ city_code: '130400', city_name: '邯郸市' }] } } })
         if (url.pathname.includes('/media/')) unexpected.push(url.pathname)
         if (url.pathname.includes('/api/')) return route.fulfill({ json: { data: { items: [] } } })
         return url.origin === origin ? route.continue() : route.abort()

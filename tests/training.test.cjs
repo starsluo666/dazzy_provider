@@ -59,6 +59,8 @@ async function main() {
     '@/components/NetworkState.vue': {},
     '@/services/providers': { uploadProviderVideo: async () => ({ data: { id: `video-${++uploads}`, url: '/synthetic.mp4' } }) },
     '@/utils/formatters': { getErrorMessage: error => error.message },
+    '@/services/locations': { getServiceCities: async () => [] },
+    '@/utils/serviceCities': require('./serviceCities.fixture.cjs').selection,
   }, { uni: { chooseVideo: options => { picker = options; pickerCalls++ }, showToast: options => messages.push(options.title) } }).state
   gallery.media.value = [{ id: 'cover', type: 'image', url: '/synthetic.jpg' }]
   gallery.chooseVideo()

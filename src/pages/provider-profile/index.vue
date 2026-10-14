@@ -65,8 +65,10 @@
         <section class="settings-panel">
           <view class="setting-row">
             <view><strong class="strong-text">服务城市</strong><text>用于服务推荐与订单匹配</text></view>
-            <picker :range="cities" range-key="name" @change="chooseCity"><view>{{ form.service_city_name || '请选择' }} <b>›</b></view></picker>
+            <view v-if="cities.length === 1 && form.service_city_code">{{ form.service_city_name }}</view>
+            <picker v-else :range="cityOptions" range-key="city_name" :value="cityIndex" :disabled="mediaLocked || !cities.length" @change="chooseCity"><view>{{ form.service_city_name || (cities.length ? '请选择' : '暂无开放城市') }} <b>›</b></view></picker>
           </view>
+          <text v-if="cityUnavailable" class="gallery-warning">原服务城市暂未开放，请重新选择。</text>
           <view class="radius-row">
             <view class="panel-heading"><view><strong class="strong-text">最大接单半径</strong><text>只推荐范围内的新订单</text></view><b>{{ form.max_service_radius_km }} km</b></view>
             <slider :value="form.max_service_radius_km" min="10" max="70" activeColor="#11c1c4" backgroundColor="#dfe9e9" block-color="#ffffff" block-size="24" @change="changeRadius" />
@@ -90,12 +92,14 @@ import ProviderPhotoCropper from '@/components/ProviderPhotoCropper.vue'
 import { getProviderProfile, saveProviderProfile, uploadProviderVideo, type PhotoCropSource, type CroppedProviderPhoto } from '@/services/providers'
 import type { ProviderMedia, ProviderProfileData } from '@/types/api'
 import { getErrorMessage } from '@/utils/formatters'
+import { getServiceCities } from '@/services/locations'
+import { selectServiceCity, type ServiceCity } from '@/utils/serviceCities'
 
-const cities = [
-  { code: '130400', name: '邯郸市' },
-  { code: '110100', name: '北京市' },
-  { code: '310100', name: '上海市' },
-]
+const cities = ref<ServiceCity[]>([])
+const cityUnavailable = ref(false)
+const cityOptions = computed(() => form.service_city_code
+  ? cities.value : [{ city_code: '', city_name: '请选择服务城市' }, ...cities.value])
+const cityIndex = computed(() => Math.max(0, cityOptions.value.findIndex(city => city.city_code === form.service_city_code)))
 const loading = ref(true)
 const saving = ref(false)
 const uploading = ref(false)
@@ -112,8 +116,8 @@ const mediaLocked = computed(() => uploading.value || saving.value || !!cropJob.
 const videoCount = computed(() => media.value.filter(item => item.type === 'video').length)
 const hasUnverifiedVideo = computed(() => media.value.some(item => item.type === 'video' && !item.duration_ms))
 const form = reactive({
-  display_name: '', bio: '', lifestyle_photo_id: null as string | null, service_city_code: '130400',
-  service_city_name: '邯郸市', max_service_radius_km: 10,
+  display_name: '', bio: '', lifestyle_photo_id: null as string | null, service_city_code: '',
+  service_city_name: '', max_service_radius_km: 10,
 })
 
 function back() { uni.navigateBack() }
@@ -141,21 +145,33 @@ function apply(value: ProviderProfileData) {
     display_name: value.display_name,
     bio: value.bio,
     lifestyle_photo_id: value.lifestyle_photo_id,
-    service_city_code: value.service_city_code || '130400',
-    service_city_name: value.service_city_name || '邯郸市',
+    service_city_code: value.service_city_code || '',
+    service_city_name: value.service_city_name || '',
     max_service_radius_km: value.max_service_radius_km,
   })
+  applyCity(form.service_city_code)
   media.value = value.media?.length ? value.media.map(item => ({ ...item })) : value.lifestyle_photo_id && value.lifestyle_photo_url
     ? [{ id: value.lifestyle_photo_id, type: 'image', url: value.lifestyle_photo_url }] : []
 }
 async function load() {
   loading.value = true
   error.value = ''
-  try { apply((await getProviderProfile()).data) } catch (reason) { error.value = getErrorMessage(reason) } finally { loading.value = false }
+  try {
+    const [profile, availableCities] = await Promise.all([getProviderProfile(), getServiceCities()])
+    cities.value = availableCities
+    apply(profile.data)
+  } catch (reason) { error.value = getErrorMessage(reason) } finally { loading.value = false }
+}
+function applyCity(code: string) {
+  const selected = selectServiceCity(cities.value, code)
+  form.service_city_code = selected.code
+  form.service_city_name = selected.name
+  cityUnavailable.value = selected.unavailable
 }
 function chooseCity(event: { detail: { value: string } }) {
-  const city = cities[Number(event.detail.value)]
-  if (city) { form.service_city_code = city.code; form.service_city_name = city.name }
+  if (mediaLocked.value) return
+  const city = cityOptions.value[Number(event.detail.value)]
+  if (city?.city_code) applyCity(city.city_code)
 }
 function changeRadius(event: { detail: { value: number } }) { form.max_service_radius_km = Number(event.detail.value) }
 function choosePhoto() {
@@ -236,15 +252,19 @@ function pauseVideos(exceptId?: string) {
   media.value.filter(item => item.type === 'video' && item.id !== exceptId).forEach(item => uni.createVideoContext(`profile-video-${item.id}`).pause())
 }
 async function save() {
-  if (mediaLocked.value) return
+  if (loading.value || error.value || mediaLocked.value) return
   saveAttempted.value = true
   if (form.display_name.trim().length < 2) return uni.showToast({ title: '达人名称至少2个字', icon: 'none' })
   if (form.bio.trim().length < 10) return uni.showToast({ title: '达人简介至少10个字', icon: 'none' })
   if (!media.value.length || media.value[0].type !== 'image') return uni.showToast({ title: '请上传一张封面照片', icon: 'none' })
   if (uncroppedCount.value) return uni.showToast({ title: '请先裁剪尺寸不合适的照片', icon: 'none' })
   if (videoCount.value > 2) return uni.showToast({ title: '最多保留2个视频，请先移除多余视频', icon: 'none' })
+  if (!form.service_city_code) return uni.showToast({ title: '请选择已开放的服务城市', icon: 'none' })
   saving.value = true
   try {
+    cities.value = await getServiceCities()
+    applyCity(form.service_city_code)
+    if (!form.service_city_code) throw new Error('原服务城市暂未开放，请重新选择')
     apply((await saveProviderProfile({ ...form, lifestyle_photo_id: media.value[0].id, media_ids: media.value.map(item => item.id), display_name: form.display_name.trim(), bio: form.bio.trim() })).data)
     uni.showToast({ title: '资料已提交审核', icon: 'success' })
   } catch (reason) {

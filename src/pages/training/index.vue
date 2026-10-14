@@ -9,11 +9,13 @@
       <NetworkState v-if="loading" loading message="正在加载学习资料…" />
       <NetworkState v-else-if="error" :message="error" action-text="重新加载" @action="load" />
       <template v-else-if="data">
-        <view v-if="!data.required" class="result-card">
+        <view v-if="!data.required && !reviewing" class="result-card">
           <view class="success-mark"><text>✓</text></view>
-          <text class="result-title">{{ data.passed ? '接单考核已通过' : '无需重复考核' }}</text>
-          <text class="body-copy">{{ data.passed ? '学习已完成，可返回工作台开启接单。其他开通条件仍需满足。' : '你已有接单记录，可继续正常接单。' }}</text>
-          <button class="primary-button dz-tappable" hover-class="dz-pressed" @tap="workbench"><text>返回工作台</text></button>
+          <text class="result-title">{{ data.passed ? '接单考核已通过' : '接单学习' }}</text>
+          <text class="body-copy">{{ data.course ? '可随时再次学习接单规范，无需重复考核，不影响已有接单资格。' : '暂无学习资料，发布后可随时回来复习。不影响已有接单资格。' }}</text>
+          <button v-if="data.course" class="primary-button dz-tappable" hover-class="dz-pressed" @tap="startReview"><text>再次学习</text></button>
+          <button v-else class="primary-button dz-tappable" hover-class="dz-pressed" @tap="load"><text>刷新学习资料</text></button>
+          <button class="secondary-button dz-tappable" hover-class="dz-pressed" @tap="workbench"><text>返回工作台</text></button>
         </view>
         <view v-else-if="!data.course" class="empty-card">
           <text class="result-title">学习资料准备中</text>
@@ -22,36 +24,42 @@
         </view>
         <template v-else>
           <view class="progress-card">
-            <text class="eyebrow">首次接单准备</text>
+            <text class="eyebrow">{{ reviewing ? '再次学习' : '首次接单准备' }}</text>
             <text class="course-title">{{ data.course.title }}</text>
-            <text class="body-copy">先学习，再答题。{{ data.course.pass_score === 100 ? '全部答对' : `达到 ${data.course.pass_score} 分` }}即可通过，未通过可重新作答。</text>
-            <view class="progress-track"><view class="progress-fill" :style="{ width: `${learnedCount / data.course.lessons.length * 100}%` }" /></view>
-            <view class="progress-caption"><text>已学习 {{ learnedCount }}/{{ data.course.lessons.length }} 篇</text><text>{{ allLearned ? '可以开始答题' : '学习进度自动保存' }}</text></view>
+            <text v-if="reviewing" class="body-copy">随时查看接单规范，无需重复考核，不影响已有接单资格。</text>
+            <template v-else>
+              <text class="body-copy">先学习，再答题。{{ data.course.pass_score === 100 ? '全部答对' : `达到 ${data.course.pass_score} 分` }}即可通过，未通过可重新作答。</text>
+              <view class="progress-track"><view class="progress-fill" :style="{ width: `${learnedCount / data.course.lessons.length * 100}%` }" /></view>
+              <view class="progress-caption"><text>已学习 {{ learnedCount }}/{{ data.course.lessons.length }} 篇</text><text>{{ allLearned ? '可以开始答题' : '学习进度自动保存' }}</text></view>
+            </template>
           </view>
-          <view class="section-heading"><text class="section-title">学习资料</text><text class="section-hint">逐篇阅读并确认完成</text></view>
+          <view class="section-heading"><text class="section-title">学习资料</text><text class="section-hint">{{ reviewing ? '点击查看，随时复习' : '逐篇阅读并确认完成' }}</text></view>
           <view v-for="(lesson, index) in data.course.lessons" :key="lesson.id" class="lesson-card">
             <button class="lesson-toggle" hover-class="pressed" :aria-expanded="openLesson === lesson.id" @tap="openLesson = openLesson === lesson.id ? '' : lesson.id">
               <text class="lesson-number" :class="{ learned: isLearned(lesson.id) }">{{ isLearned(lesson.id) ? '✓' : index + 1 }}</text>
-              <view class="lesson-heading"><text class="lesson-title">{{ lesson.title }}</text><text class="lesson-state">{{ isLearned(lesson.id) ? '已学习' : '待学习' }}</text></view>
+              <view class="lesson-heading"><text class="lesson-title">{{ lesson.title }}</text><text class="lesson-state">{{ reviewing ? '随时复习' : isLearned(lesson.id) ? '已学习' : '待学习' }}</text></view>
               <text class="chevron">{{ openLesson === lesson.id ? '−' : '+' }}</text>
             </button>
             <view v-if="openLesson === lesson.id" class="lesson-detail">
               <text class="lesson-body" selectable>{{ lesson.content }}</text>
-              <button class="secondary-button" :disabled="busy || isLearned(lesson.id)" @tap="completeLesson(lesson.id)"><text>{{ isLearned(lesson.id) ? '已完成学习' : busy ? '保存中…' : '我已阅读并完成学习' }}</text></button>
+              <button v-if="!reviewing" class="secondary-button" :disabled="busy || isLearned(lesson.id)" @tap="completeLesson(lesson.id)"><text>{{ isLearned(lesson.id) ? '已完成学习' : busy ? '保存中…' : '我已阅读并完成学习' }}</text></button>
             </view>
           </view>
-          <view class="section-heading"><text class="section-title">接单考核</text><text class="section-hint">{{ data.course.questions.length }} 道单选题</text></view>
-          <view v-if="!allLearned" class="locked-card"><text class="body-copy">完成上方全部学习资料后，开始答题。</text></view>
+          <button v-if="reviewing" class="secondary-button" @tap="finishReview"><text>返回学习首页</text></button>
           <template v-else>
-            <view v-if="data.last_result && !data.last_result.passed" class="retry-note"><text>上次得分 {{ data.last_result.score }} 分，尚未通过。可以重新阅读资料后修改答案，再次提交。</text></view>
-            <view v-for="(question, index) in data.course.questions" :key="question.id" class="question-card">
-              <text class="question-title">{{ index + 1 }}. {{ question.title }}</text>
-              <button v-for="(option, optionIndex) in question.options" :key="optionIndex" class="answer-option" :class="{ selected: answers[question.id] === optionIndex }" :disabled="busy" role="radio" :aria-checked="answers[question.id] === optionIndex" hover-class="pressed" @tap="answers[question.id] = optionIndex">
-                <text class="answer-indicator">{{ answers[question.id] === optionIndex ? '✓' : String.fromCharCode(65 + optionIndex) }}</text><text class="answer-copy">{{ option }}</text>
-              </button>
-            </view>
-            <text class="answer-count">已作答 {{ answeredCount }}/{{ data.course.questions.length }} 题</text>
-            <button class="primary-button submit-button" :disabled="busy || answeredCount !== data.course.questions.length" hover-class="dz-pressed" @tap="submit"><text>{{ busy ? '提交中…' : '提交考核' }}</text></button>
+            <view class="section-heading"><text class="section-title">接单考核</text><text class="section-hint">{{ data.course.questions.length }} 道单选题</text></view>
+            <view v-if="!allLearned" class="locked-card"><text class="body-copy">完成上方全部学习资料后，开始答题。</text></view>
+            <template v-else>
+              <view v-if="data.last_result && !data.last_result.passed" class="retry-note"><text>上次得分 {{ data.last_result.score }} 分，尚未通过。可以重新阅读资料后修改答案，再次提交。</text></view>
+              <view v-for="(question, index) in data.course.questions" :key="question.id" class="question-card">
+                <text class="question-title">{{ index + 1 }}. {{ question.title }}</text>
+                <button v-for="(option, optionIndex) in question.options" :key="optionIndex" class="answer-option" :class="{ selected: answers[question.id] === optionIndex }" :disabled="busy" role="radio" :aria-checked="answers[question.id] === optionIndex" hover-class="pressed" @tap="answers[question.id] = optionIndex">
+                  <text class="answer-indicator">{{ answers[question.id] === optionIndex ? '✓' : String.fromCharCode(65 + optionIndex) }}</text><text class="answer-copy">{{ option }}</text>
+                </button>
+              </view>
+              <text class="answer-count">已作答 {{ answeredCount }}/{{ data.course.questions.length }} 题</text>
+              <button class="primary-button submit-button" :disabled="busy || answeredCount !== data.course.questions.length" hover-class="dz-pressed" @tap="submit"><text>{{ busy ? '提交中…' : '提交考核' }}</text></button>
+            </template>
           </template>
         </template>
       </template>
@@ -71,6 +79,7 @@ const data = ref<TrainingData | null>(null)
 const loading = ref(true)
 const error = ref('')
 const busy = ref(false)
+const reviewing = ref(false)
 const openLesson = ref('')
 const answers = reactive<Record<string, number>>({})
 const isLearned = (id: string) => data.value?.completed_lesson_ids.includes(id) || false
@@ -81,9 +90,22 @@ const answeredCount = computed(() => data.value?.course?.questions.filter(q => N
 function apply(value: TrainingData) {
   if (data.value?.course?.version_id !== value.course?.version_id) {
     Object.keys(answers).forEach(key => { delete answers[key] })
-    openLesson.value = value.course?.lessons.find(item => !value.completed_lesson_ids.includes(item.id))?.id || ''
+    openLesson.value = (reviewing.value
+      ? value.course?.lessons[0]
+      : value.course?.lessons.find(item => !value.completed_lesson_ids.includes(item.id)))?.id || ''
   }
+  if (value.required || !value.course) reviewing.value = false
   data.value = value
+}
+function startReview() {
+  if (loading.value || error.value || busy.value || !data.value?.course || data.value.required) return
+  reviewing.value = true
+  openLesson.value = data.value.course.lessons[0]?.id || ''
+  uni.pageScrollTo({ scrollTop: 0, duration: 0 })
+}
+function finishReview() {
+  reviewing.value = false
+  uni.pageScrollTo({ scrollTop: 0, duration: 0 })
 }
 function back() { uni.navigateBack({ fail: workbench }) }
 function workbench() { uni.reLaunch({ url: '/pages/workbench/index' }) }
@@ -99,7 +121,7 @@ async function handleFailure(reason: unknown) {
   if ((reason as { status?: number })?.status === 409) await load()
 }
 async function completeLesson(id: string) {
-  if (busy.value || !data.value?.course || isLearned(id)) return
+  if (busy.value || !data.value?.required || !data.value.course || reviewing.value || isLearned(id)) return
   busy.value = true
   try {
     apply((await completeTrainingLesson(data.value.course.version_id, id)).data)
@@ -108,7 +130,7 @@ async function completeLesson(id: string) {
   finally { busy.value = false }
 }
 async function submit() {
-  if (busy.value || !data.value?.course || !allLearned.value || answeredCount.value !== data.value.course.questions.length) return
+  if (busy.value || !data.value?.required || !data.value.course || reviewing.value || !allLearned.value || answeredCount.value !== data.value.course.questions.length) return
   busy.value = true
   try {
     apply((await submitTraining(data.value.course.version_id, { ...answers })).data)

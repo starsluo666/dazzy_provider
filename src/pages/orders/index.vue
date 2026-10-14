@@ -32,7 +32,7 @@
       </view>
       <view v-for="order in (loading || error ? [] : visibleOrders)" :key="order.order_no" class="order-card">
         <view class="card-header">
-          <text class="order-status" :class="'tone-' + statusTone(order.status)">{{ statusLabel(order.status) }}</text>
+          <text class="order-status" :class="'tone-' + statusTone(order.status, order.fulfillment_review_required)">{{ statusLabel(order.status, order.fulfillment_review_required) }}</text>
           <button class="detail-link" aria-label="查看订单详情" hover-class="dz-pressed" @tap="openDetail(order)">订单详情 ›</button>
         </view>
         <view class="customer-row" @tap="openDetail(order)">
@@ -82,10 +82,9 @@
         </view>
         <view v-if="order.fulfillment_review_required" class="risk-notice">
           <text class="risk-title">履约异常 · 待客服审核</text>
-          <text class="risk-copy">自动确认与分账已暂停，审核通过后恢复。</text>
         </view>
-        <view class="card-footer">
-          <view class="progress-copy"><text class="progress-title">{{ nextStepTitle(order) }}</text><text class="progress-detail" :class="{ 'copy-warning': order.status === 'pending_acceptance' && isExpired(order) }">{{ nextStepCopy(order) }}</text></view>
+        <view v-if="order.status !== 'pending_confirmation' || !order.fulfillment_review_required" class="card-footer">
+          <view class="progress-copy"><text class="progress-title">{{ nextStepTitle(order) }}</text><text v-if="nextStepCopy(order)" class="progress-detail" :class="{ 'copy-warning': order.status === 'pending_acceptance' && isExpired(order) }">{{ nextStepCopy(order) }}</text></view>
           <view v-if="actionLabel(order)" class="action-row">
             <button class="order-button primary-button" :class="{ 'button-disabled': isActionDisabled(order) }"
               :disabled="isActionDisabled(order)" hover-class="dz-pressed" @tap="performAction(order)">
@@ -167,7 +166,8 @@ function shortDate(value: string) {
 function dateTime(value: string) {
   return formatBusinessDateTime(value)
 }
-function statusLabel(status: string) {
+function statusLabel(status: string, reviewRequired = false) {
+  if (status === 'pending_confirmation' && reviewRequired) return '待客服审核'
   return {
     pending_acceptance: '等待接单', pending_service: '等待服务', departed: '已出发',
     in_service: '服务中', pending_confirmation: '等待用户确认', pending_review: '等待评价',
@@ -176,7 +176,8 @@ function statusLabel(status: string) {
     terminated: '已提前终止',
   }[status] || '处理中'
 }
-function statusTone(status: string) {
+function statusTone(status: string, reviewRequired = false) {
+  if (status === 'pending_confirmation' && reviewRequired) return 'orange'
   if (['pending_acceptance', 'pending_support', 'after_sales'].includes(status)) return 'orange'
   if (['completed', 'pending_review'].includes(status)) return 'green'
   if (['cancelled', 'refunded', 'terminated'].includes(status)) return 'gray'
@@ -213,7 +214,7 @@ function nextStepCopy(order: ProviderManagedOrder) {
   if (order.cancellation?.wait_state === 'waiting') return '联系上用户后，请进入详情结束等待再开始服务'
   if (order.after_sales?.termination) return order.after_sales.termination.finance_label
   if (order.timeout?.timed_out_at) return `${order.timeout.reason} · ${order.timeout.refund_label}`
-  if (order.fulfillment_review_required) return '履约时间需客服核实，自动确认和分账已暂停'
+  if (order.fulfillment_review_required) return ''
   if (order.status === 'pending_acceptance') return acceptanceCopy(order)
   if (order.status === 'pending_service') return order.provider_contact_initiated_at ? '出发前请确认已与用户核实订单' : '请先联系用户，核实订单情况'
   if (order.status === 'departed' && !order.arrival_photo_url) return '抵达集合地点后上传现场照片'

@@ -14,10 +14,10 @@
       <NetworkState v-else-if="error" :message="error" action-text="重新加载" @action="load" />
 
       <template v-else-if="order">
-        <section class="status-hero" :class="statusTone(order.status)">
+        <section class="status-hero" :class="statusTone(order.status, order.fulfillment_review_required)">
           <view class="status-line">
-            <view class="status-pill" :class="statusTone(order.status)">
-              <i />{{ statusLabel(order.status) }}
+            <view class="status-pill" :class="statusTone(order.status, order.fulfillment_review_required)">
+              <i />{{ statusLabel(order.status, order.fulfillment_review_required) }}
             </view>
             <text>{{ order.order_no }}</text>
           </view>
@@ -131,7 +131,7 @@
             </view>
             <view class="timeline-copy">
               <strong class="strong-text">{{ item.label }}</strong>
-              <text>{{ item.time || item.copy }}</text>
+              <text v-if="item.time || item.copy">{{ item.time || item.copy }}</text>
             </view>
           </view>
         </section>
@@ -231,7 +231,9 @@ const timeline = computed<TimelineItem[]>(() => {
   addMilestone(rows, '达人已出发', item.departed_at)
   addMilestone(rows, '已到达集合地点', item.arrival_photo_uploaded_at)
   addMilestone(rows, '服务已开始', item.service_started_at)
-  addMilestone(rows, item.completion_longitude != null ? '已提交完成并留存位置' : '已提交服务完成', item.completion_submitted_at)
+  if (!item.fulfillment_review_required) {
+    addMilestone(rows, item.completion_longitude != null ? '已提交完成并留存位置' : '已提交服务完成', item.completion_submitted_at)
+  }
   addMilestone(
     rows,
     item.auto_confirmed_at ? '系统已自动确认完成' : '用户已确认完成',
@@ -256,7 +258,7 @@ const timeline = computed<TimelineItem[]>(() => {
     terminated: ['服务已提前终止', '退款与剩余款项请查看客服处理进度'],
     pending_support: ['等待平台处理', '请留意平台客服消息'],
   }[item.status]
-  if (item.fulfillment_review_required) rows.push({ label: '履约异常待审核', copy: '自动确认与分账已暂停，由客服核实后恢复。', current: true, danger: true })
+  if (item.fulfillment_review_required) rows.push({ label: '履约异常 · 待客服审核', current: true, danger: true })
   else if (next) rows.push({ label: next[0], copy: next[1], current: true })
   return rows
 })
@@ -275,7 +277,8 @@ function addressLabel(item: ProviderManagedOrder) {
     .filter((value, index, values) => value && values.indexOf(value) === index)
     .join('，') || '地址待确认'
 }
-function statusLabel(status: string) {
+function statusLabel(status: string, reviewRequired = false) {
+  if (status === 'pending_confirmation' && reviewRequired) return '待客服审核'
   return {
     pending_acceptance: '等待接单', pending_service: '等待服务', departed: '已出发',
     in_service: '服务中', pending_confirmation: '等待用户确认', pending_review: '等待评价',
@@ -284,7 +287,8 @@ function statusLabel(status: string) {
     terminated: '已提前终止',
   }[status] || order.value?.status_label || '处理中'
 }
-function statusTone(status: string) {
+function statusTone(status: string, reviewRequired = false) {
+  if (status === 'pending_confirmation' && reviewRequired) return 'orange'
   if (['pending_acceptance', 'pending_support', 'after_sales'].includes(status)) return 'orange'
   if (['completed', 'pending_review'].includes(status)) return 'green'
   if (['cancelled', 'refunded', 'terminated'].includes(status)) return 'gray'
@@ -301,7 +305,7 @@ function acceptanceCopy(item: ProviderManagedOrder) {
 function nextStepCopy(item: ProviderManagedOrder) {
   if (item.after_sales?.termination) return item.after_sales.termination.finance_label
   if (item.timeout?.timed_out_at) return `${item.timeout.reason} · ${item.timeout.refund_label}`
-  if (item.fulfillment_review_required) return '履约异常待客服审核，自动确认与分账已暂停'
+  if (item.fulfillment_review_required) return '履约异常 · 待客服审核'
   if (item.status === 'pending_acceptance') return acceptanceCopy(item)
   if (item.status === 'pending_service') return '接受订单后，可查看完整电话与导航位置'
   if (item.status === 'departed' && !item.arrival_photo_url) return '抵达集合地点后，请上传现场照片'

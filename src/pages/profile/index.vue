@@ -122,17 +122,17 @@ const icons = {
   featureService: '/static/icons/feature-service.svg',
 } as const
 const entries = [
-  { label: '邀请达人', path: '/pages/invitations/index', icon: '/static/tabbar/profile.svg' },
-  { label: '接单学习', path: '/pages/training/index', icon: '/static/icons/check.svg' },
+  { label: '邀请达人', path: '/pages/invitations/index', icon: '/static/ui-icons/invite.svg' },
+  { label: '接单学习', path: '/pages/training/index', icon: '/static/ui-icons/learning.svg' },
   { label: '消息中心', path: '/pages/messages/index', icon: '/static/tabbar/message.svg' },
-  { label: '实名认证', path: '/pages/identity/index', icon: '/static/icons/check.svg' },
-  { label: '达人资料', path: '/pages/provider-profile/index', icon: '/static/tabbar/profile.svg' },
+  { label: '实名认证', path: '/pages/identity/index', icon: '/static/ui-icons/identity.svg' },
+  { label: '达人资料', path: '/pages/provider-profile/index', icon: '/static/ui-icons/edit.svg' },
   { label: '服务管理', path: '/pages/services/index', icon: '/static/icons/service.svg' },
   { label: '档期管理', path: '/pages/schedule/index', icon: '/static/icons/schedule.svg' },
   { label: '收入明细', path: '/pages/income/index', icon: '/static/icons/income.svg' },
-  { label: '收款账户', path: '/pages/receiving-account/index', icon: '/static/icons/security.svg' },
+  { label: '收款账户', path: '/pages/receiving-account/index', icon: '/static/ui-icons/bank.svg' },
   { label: '达人订单', path: '/pages/orders/index', icon: '/static/icons/orders.svg' },
-  { label: '账号设置', path: '/pages/security/index', icon: '/static/icons/security.svg' },
+  { label: '账号设置', path: '/pages/security/index', icon: '/static/ui-icons/settings.svg' },
 ]
 
 function open(path: string) { uni.navigateTo({ url: path }) }

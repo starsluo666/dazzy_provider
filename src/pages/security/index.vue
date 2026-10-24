@@ -33,7 +33,7 @@
             <view class="row-value"><strong>{{ security?.provider_credit_score ?? '—' }}</strong><text>分</text></view>
           </view>
           <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="修改登录手机号" @tap="openPhoneChange">
-            <view class="row-icon"><image src="/static/icons/phone.svg" mode="aspectFit" /></view>
+            <view class="row-icon"><image src="/static/ui-icons/phone.svg" mode="aspectFit" aria-hidden="true" /></view>
             <view class="row-copy"><strong class="strong-text">登录手机号</strong><text>用于登录和身份核验</text></view>
             <view class="row-value"><strong>{{ security?.phone_masked }}</strong><b>›</b></view>
           </button>
@@ -42,7 +42,7 @@
         <h2 class="section-title">安全设置</h2>
         <section class="setting-card">
           <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="修改登录密码" @tap="openPanel('password')">
-            <view class="row-icon"><image src="/static/icons/password.svg" mode="aspectFit" /></view>
+            <view class="row-icon"><image src="/static/ui-icons/password.svg" mode="aspectFit" aria-hidden="true" /></view>
             <view class="row-copy"><strong class="strong-text">登录密码</strong><text>{{ needsInitialPassword ? '验证绑定手机号后设置登录密码' : '定期更换密码可降低账号风险' }}</text></view>
             <view class="row-value"><strong>{{ needsInitialPassword ? '设置' : '修改' }}</strong><b>›</b></view>
           </button>
@@ -51,7 +51,7 @@
         <h2 class="section-title">账号管理</h2>
         <section class="setting-card danger-card">
           <button class="setting-row dz-tappable" hover-class="dz-pressed" aria-label="注销账号" @tap="openPanel('close')">
-            <view class="row-icon danger-icon"><image src="/static/icons/account-close.svg" mode="aspectFit" /></view>
+            <view class="row-icon danger-icon"><image src="/static/ui-icons/close.svg" mode="aspectFit" aria-hidden="true" /></view>
             <view class="row-copy"><strong class="strong-text danger-copy">账号注销</strong><text>申请后等待 5 个工作日完成注销</text></view>
             <view class="row-value"><strong class="danger-copy">注销</strong><b>›</b></view>
           </button>
@@ -60,6 +60,7 @@
         <h2 class="section-title">协议与隐私</h2>
         <section class="setting-card">
           <button v-for="link in legalLinks" :key="link.kind" class="setting-row dz-tappable" hover-class="dz-pressed" @tap="openLegalDocument(link.kind)">
+            <view class="row-icon"><image :src="link.kind === 'privacy' ? '/static/ui-icons/privacy.svg' : '/static/ui-icons/agreement.svg'" mode="aspectFit" aria-hidden="true" /></view>
             <view class="row-copy"><strong class="strong-text">{{ link.label }}</strong></view>
             <view class="row-value"><b aria-hidden="true">›</b></view>
           </button>

@@ -12,7 +12,7 @@
       <template v-else-if="account">
         <view class="status-card">
           <view class="status-heading">
-            <view class="status-icon"><image class="status-image" src="/static/icons/income.svg" mode="aspectFit" /></view>
+            <view class="status-icon"><image class="status-image" src="/static/ui-icons/bank.svg" mode="aspectFit" aria-hidden="true" /></view>
             <view class="status-copy">
               <text class="eyebrow">余额提现 · 本人银行卡</text>
               <text class="status-title">{{ account.status_label }}</text>

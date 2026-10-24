@@ -19,7 +19,8 @@ const js = fs.readFileSync(path.join(build, `${pagePath}.js`), 'utf8')
 const imageBinding = wxml.match(/<image[^>]*src="\{\{(\w+)\}\}"/)?.[1]
 assert.ok(imageBinding)
 const assetName = js.match(new RegExp(`\\b${imageBinding}:\\w+\\.([\\w$]+)`))?.[1]
-assert.equal(assets[assetName], '/static/icons/income.svg')
+assert.equal(assets[assetName], '/static/ui-icons/bank.svg')
+assert.ok(fs.existsSync(path.join(build, assets[assetName].slice(1))), 'bank icon must be included in the mini-program package')
 assert.ok(wxml.includes('<input'))
 assert.ok(wxml.includes('<picker'))
 assert.ok(wxml.includes('save-button'))

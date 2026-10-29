@@ -11,6 +11,14 @@
           <view><span>本月预计 ¥{{ formatAmount(data.summary.month_income_amount) }}</span><span>{{ data.summary.month_order_count }} 笔结算</span></view>
           <button v-if="data.wallet" class="withdraw-button" :class="{ 'is-disabled': busy || (!data.wallet.can_withdraw && !pendingRequest) }" :disabled="busy || (!data.wallet.can_withdraw && !pendingRequest)" @tap="openWithdrawal">{{ pendingRequest ? '核实上次提现申请' : '提现到本人银行卡' }}</button>
         </section>
+        <section v-if="data.wallet" class="withdraw-rules">
+          <text class="rules-title">提现规则</text>
+          <view class="rule-row"><text>可提现额度</text><text>{{ data.wallet.max_withdrawal_amount > 0 ? `不超过当前可提现余额，单笔最高 ¥${formatAmount(data.wallet.max_withdrawal_amount)}` : '不超过当前可提现余额；单笔限额以页面可用额度为准' }}</text></view>
+          <view class="rule-row"><text>申请次数</text><text>暂无每日次数上限；同一时间仅可有一笔提现处理中</text></view>
+          <view class="rule-row"><text>申请时间</text><text>暂无固定申请时段；渠道维护或服务异常时可能暂不可用</text></view>
+          <view class="rule-row"><text>到账时间</text><text>T1 为下一工作日，D1 为下一自然日；以账户开通类型、渠道处理和银行卡实际到账为准</text></view>
+          <text class="rules-footnote">仅能提现至本人已核验的银行卡，提现手续费由平台承担。收入完成账务结算并确认后才计入可提现余额。</text>
+        </section>
         <text v-if="data.wallet?.unavailable_reason" class="ledger-note">{{ data.wallet.unavailable_reason }}</text>
         <view v-if="data.wallet" class="cash-summary"><text>提现中 ¥{{ formatAmount(data.wallet.reserved_amount) }}</text><text>已提现 ¥{{ formatAmount(data.wallet.paid_amount) }}</text></view>
         <view v-if="showWithdrawal" class="withdraw-form">
@@ -30,7 +38,6 @@
           <view class="receiving-copy"><text class="receiving-title">收款账户</text><text class="receiving-note">管理本人银行卡 · 查看账户开通状态</text></view>
           <text class="receiving-arrow">›</text>
         </button>
-        <text class="ledger-note">订单收入结算并确认到账后才计入可提现余额。结算记录不代表可提现余额，也不代表银行卡已到账。</text>
         <template v-if="data.wallet?.withdrawals.length">
           <h2 class="section-title">提现记录</h2>
           <view class="withdraw-record" v-for="item in data.wallet.withdrawals" :key="item.withdrawal_no">
@@ -154,6 +161,12 @@ onShow(load)
 .withdraw-button{display:flex;align-items:center;justify-content:center;width:100%;min-height:88rpx;margin-top:28rpx;padding:18rpx 24rpx;line-height:1.4;font-size:28rpx;font-weight:600;color:#087f86;background:#fff;border-radius:20rpx}
 .withdraw-button::after,.cash-primary::after,.cash-secondary::after{border:0}
 .withdraw-button.is-disabled{color:#5e777b;background:#e3eeee}
+.withdraw-rules{display:flex;gap:16rpx;flex-direction:column;margin-top:20rpx;padding:26rpx;border:1rpx solid $dz-border;border-radius:24rpx;background:#fff}
+.rules-title{font-size:28rpx;font-weight:600;color:$dz-text-primary}
+.rule-row{display:flex;align-items:flex-start;justify-content:space-between;gap:24rpx;font-size:23rpx;line-height:1.55}
+.rule-row>text:first-child{flex:none;color:$dz-text-secondary}
+.rule-row>text:last-child{flex:1;color:$dz-text-primary;text-align:right}
+.rules-footnote{padding-top:14rpx;border-top:1rpx solid $dz-border;color:$dz-text-secondary;font-size:21rpx;line-height:1.6}
 .cash-summary{display:flex;justify-content:space-between;gap:16rpx;margin:20rpx 8rpx;font-size:25rpx;color:$dz-text-secondary}
 .withdraw-form,.withdraw-record{padding:26rpx;margin-top:20rpx;border:1rpx solid $dz-border;border-radius:24rpx;background:#fff}
 .withdraw-title{font-size:29rpx;font-weight:600}

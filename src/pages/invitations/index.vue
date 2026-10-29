@@ -20,7 +20,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShareAppMessage, onShow } from '@dcloudio/uni-app'
 import { request } from '@/services/http'
 interface InviteSummary {
   source: { code: string; name: string; invite_url: string } | null
@@ -33,7 +33,7 @@ const data = ref<InviteSummary | null>(null), loading = ref(true), error = ref('
 const labels: Record<string, string> = { pending: '待审核', approved: '待打款', paid: '已打款' }
 const money = (value: number) => `¥${(value / 100).toFixed(2)}`
 async function load() {
-  loading.value = true; error.value = ''
+  loading.value = true; error.value = ''; data.value = null
   try {
     data.value = (await request<{ data: InviteSummary }>('/growth/provider-invites/me/', { query: { page: page.value } })).data
     if (!data.value.source) {
@@ -41,11 +41,24 @@ async function load() {
       data.value = (await request<{ data: InviteSummary }>('/growth/provider-invites/me/', { query: { page: page.value } })).data
     }
   } catch (e) { error.value = e instanceof Error ? e.message : '邀请信息加载失败，请稍后重试' }
-  finally { loading.value = false }
+  finally {
+    loading.value = false
+    // #ifdef MP-WEIXIN
+    if (data.value?.enabled && data.value.source?.code) uni.showShareMenu({ menus: ['shareAppMessage'] })
+    else uni.hideShareMenu({ hideShareItems: ['shareAppMessage'] })
+    // #endif
+  }
 }
 function turn(direction: number) { page.value += direction; void load() }
 function copyLink() { if (data.value?.enabled && data.value.source) uni.setClipboardData({ data: data.value.source.invite_url }) }
 function goBack() { uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/profile/index' }) }) }
+onShareAppMessage(() => {
+  const source = data.value?.enabled ? data.value.source : null
+  return {
+    title: source ? `${source.name}邀请你成为乐搭伴达人` : '邀请你加入乐搭伴达人团队',
+    path: `/pages/invitations/register${source?.code ? `?code=${encodeURIComponent(source.code)}` : ''}`,
+  }
+})
 onShow(load)
 </script>
 

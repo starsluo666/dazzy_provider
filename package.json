@@ -25,6 +25,7 @@
     "test:income-withdrawal": "node tests/incomeWithdrawal.test.cjs",
     "test:order-fulfillment": "node tests/orderFulfillment.test.cjs && node tests/orderReviewPresentation.test.cjs",
     "test:orders:mp": "node tests/ordersMp.test.cjs",
+    "test:profile:mp": "node tests/profileMp.test.cjs",
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {

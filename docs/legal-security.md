@@ -9,4 +9,15 @@
 - 2026-11-03 按用户确认，服务协议和隐私政策的展示生效日期统一为 2026 年 9 月 15 日，与用户端保持一致；原 DOCX 来源指纹保留。
 - 协议运营主体、SDK 清单、数据清理等仍按用户端 `docs/legal-document-review.md` 上线前核实，本轮不新承诺数据抹除或达人独立服务协议。
 
+## 微信选图接口声明
+
+实名认证页在微信端通过 `chooseMedia` 选择身份证照片与本人自拍；其他平台使用 `chooseImage`。
+微信公众平台中需要为达人端小程序设置《用户隐私保护指引》，声明实际使用的“选中的照片或视频信息”，并等待对应指引生效。代码中的协议 JSON 和登录勾选不能代替微信平台的接口声明。
+
+- `api scope is not declared in the privacy agreement`：平台接口声明缺失或未对当前版本生效，由运营在微信公众平台更新指引。用户端显示“照片选择暂不可用，请联系客服”。
+- `privacy permission is not authorized`：用户隐私授权未完成，提示用户先同意小程序隐私保护指引。
+- 排查日志标记为 `[identity-photo-picker]`，保留接口名与脱敏后的错误信息，不记录证件照片、上传返回对象或临时/签名图片地址。
+
+配置入口与图片信息类型参考：[腾讯云官方说明](https://cloud.tencent.com/document/product/1301/97930)。
+
 验证：`npm run test:legal`、`npm run test:security`、`npm run test:account-closure`、`npm run type-check`、`npm run build:h5`、`npm run build:mp-weixin`。

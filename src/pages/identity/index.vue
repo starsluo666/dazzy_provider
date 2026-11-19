@@ -233,50 +233,99 @@ async function submit() {
 function choosePhoto(key: PhotoKey) {
   if (disposed || busy.value || locked.value || checkingIdentity.value) return
   picking.value = true
-  try { uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
-    success: async ({ tempFilePaths, tempFiles }) => {
-      picking.value = false
-      if (disposed || uploadingAny.value) return
-      if (!tempFilePaths[0]) {
-        uni.showToast({ title: '未获取到图片，请重试', icon: 'none' })
-        return
-      }
-      const file = Array.isArray(tempFiles) ? tempFiles[0] : tempFiles
-      if (file?.size && file.size > 8 * 1024 * 1024) {
-        uni.showToast({ title: '图片不能超过8MB', icon: 'none' })
-        return
-      }
-      uploading[key] = true
-      let saved = false
-      try {
-        const result = await uploadProviderIdentityPhoto(tempFilePaths[0], file, key)
-        if (disposed) return
-        const response = await saveProviderIdentity({ recognition_mode: 'photo', [`${key}_id`]: result.data.id })
-        if (disposed) return
-        apply(response.data)
-        saved = true
-      } catch (reason) {
-        if (!disposed) {
-          uni.showToast({ title: getErrorMessage(reason, '照片保存失败，请重新上传'), icon: 'none' })
-          await refreshAfterError()
-        }
-      } finally {
-        uploading[key] = false
-      }
-      if (saved && key === 'identity_front_photo') await verifyFront()
-    },
-    fail: ({ errMsg }) => {
-      picking.value = false
-      if (!disposed && !/cancel/i.test(errMsg || '')) {
-        uni.showToast({ title: '打开相册失败，请重试', icon: 'none' })
-      }
-    },
-  }) } catch {
+  let pickerApi = 'chooseImage'
+  const fail = (reason: unknown) => {
     picking.value = false
-    if (!disposed) uni.showToast({ title: '打开相册失败，请重试', icon: 'none' })
+    if (disposed) return
+    const nativeError = reason && typeof reason === 'object'
+      ? reason as { errMsg?: unknown; message?: unknown; errCode?: unknown }
+      : {}
+    const detail = typeof reason === 'string' ? reason
+      : typeof nativeError.errMsg === 'string' ? nativeError.errMsg
+      : typeof nativeError.message === 'string' ? nativeError.message : 'Unknown picker error'
+    if (/cancel/i.test(detail)) return
+    // Retain native diagnostics without logging the result object, photos, or local/signed URLs.
+    const safeDetail = detail
+      .replace(/(?:https?:\/\/|wxfile:\/\/|file:\/\/|blob:)\S+/gi, '[path]')
+      .replace(/(?:[a-z]:[\\/]|\/(?:tmp|var|private|Users|storage|data)\/)[^\s,;]+/gi, '[path]')
+      .replace(/\d{7,}[xX]?/g, '[redacted]')
+      .slice(0, 320)
+    console.warn('[identity-photo-picker]', {
+      api: pickerApi, errMsg: safeDetail,
+      errCode: typeof nativeError.errCode === 'number' ? nativeError.errCode : undefined,
+    })
+    const title = /api scope is not declared in the privacy agreement/i.test(detail)
+      ? '照片选择暂不可用，请联系客服'
+      : /privacy|隐私/i.test(detail) ? '请先同意小程序隐私保护指引后重试'
+        : /auth(?:orize)?\s*(?:deny|denied)|permission|denied|权限|授权/i.test(detail)
+          ? '请在微信或手机设置中允许相册、相机权限' : '打开相册失败，请重试'
+    uni.showToast({ title, icon: 'none', duration: 3000 })
+  }
+  const uploadSelectedPhoto = async (filePath: string | undefined, file?: { size?: number }) => {
+    picking.value = false
+    if (disposed || uploadingAny.value) return
+    if (typeof filePath !== 'string' || !filePath) {
+      uni.showToast({ title: '未获取到图片，请重试', icon: 'none' })
+      return
+    }
+    if (file?.size && file.size > 8 * 1024 * 1024) {
+      uni.showToast({ title: '图片不能超过8MB', icon: 'none' })
+      return
+    }
+    uploading[key] = true
+    let saved = false
+    try {
+      const result = await uploadProviderIdentityPhoto(filePath, file, key)
+      if (disposed) return
+      const response = await saveProviderIdentity({ recognition_mode: 'photo', [`${key}_id`]: result.data.id })
+      if (disposed) return
+      apply(response.data)
+      saved = true
+    } catch (reason) {
+      if (!disposed) {
+        uni.showToast({ title: getErrorMessage(reason, '照片保存失败，请重新上传'), icon: 'none' })
+        await refreshAfterError()
+      }
+    } finally {
+      uploading[key] = false
+    }
+    if (saved && key === 'identity_front_photo') await verifyFront()
+  }
+  try {
+    // #ifdef MP-WEIXIN
+    pickerApi = 'chooseMedia'
+    uni.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: ({ tempFiles }) => {
+        const file = tempFiles?.[0]
+        if (file?.fileType && file.fileType !== 'image') {
+          picking.value = false
+          if (!disposed) uni.showToast({ title: '请选择图片', icon: 'none' })
+          return
+        }
+        return uploadSelectedPhoto(file?.tempFilePath, file)
+      },
+      fail,
+    })
+    // #endif
+    // #ifndef MP-WEIXIN
+    uni.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: ({ tempFilePaths, tempFiles }) => {
+        const file = Array.isArray(tempFiles) ? tempFiles[0] : tempFiles
+        const filePath = Array.isArray(tempFilePaths) ? tempFilePaths[0] : tempFilePaths
+        return uploadSelectedPhoto(filePath, file)
+      },
+      fail,
+    })
+    // #endif
+  } catch (reason) {
+    fail(reason)
   }
 }
 onLoad(() => { if (guardCurrentPage()) void load() })

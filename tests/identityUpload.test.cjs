@@ -87,7 +87,7 @@ async function main() {
   await assert.rejects(uploadProviderIdentityPhoto('/tmp/error.png'), /水印服务暂不可用/)
 
   const page = fs.readFileSync(path.resolve(__dirname, '../src/pages/identity/index.vue'), 'utf8')
-  assert.match(page, /uploadProviderIdentityPhoto\(tempFilePaths\[0\], file, key\)/)
+  assert.match(page, /uploadProviderIdentityPhoto\(filePath, file, key\)/)
   assert.ok(page.includes("saveProviderIdentity({ recognition_mode: 'photo', [`${key}_id`]: result.data.id })"))
   assert.match(page, /previews\.identity_front_photo=value\.identity_front_photo_url/)
   assert.match(page, /previews\.identity_back_photo=value\.identity_back_photo_url/)

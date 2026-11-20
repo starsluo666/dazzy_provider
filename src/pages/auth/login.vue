@@ -3,13 +3,14 @@
     <view class="dz-safe-top" />
     <main class="auth-shell">
       <view class="auth-brand"><image src="/static/auth-logo.png" mode="aspectFit" aria-label="乐搭伴" /></view>
-      <view class="auth-heading"><h1>欢迎回来</h1><p>登录达人工作端，开始管理服务</p></view>
+      <view class="auth-heading"><h1>欢迎回来</h1><p>登录达人或门店工作台</p></view>
       <view v-if="closurePending" class="closure-pending-notice">注销申请已提交。等待期内成功登录会撤销申请；如需继续注销，请勿重新登录。</view>
       <view class="auth-form">
-        <view class="auth-mode-title"><text>密码登录</text><view /></view>
+        <view class="auth-mode-title"><text>{{ smsMode ? '验证码登录' : '密码登录' }}</text><view /></view>
         <label class="auth-field"><input v-model="phone" type="number" maxlength="11" placeholder="请输入手机号" /></label>
-        <label class="auth-field"><input v-model="password" :password="!visible" maxlength="20" placeholder="请输入密码" /><view class="auth-field-action" @tap="visible=!visible">{{ visible ? '隐藏' : '显示' }}</view></label>
-        <view class="auth-inline-link">已提交入驻申请也可登录查看审核进度</view>
+        <label v-if="smsMode" class="auth-field"><input v-model="code" type="number" maxlength="6" placeholder="请输入验证码" /><view class="auth-field-action" @tap="sendCode">{{ seconds > 0 ? `${seconds}s` : sending ? '发送中' : '发送验证码' }}</view></label>
+        <label v-else class="auth-field"><input v-model="password" :password="!visible" maxlength="20" placeholder="请输入密码" /><view class="auth-field-action" @tap="visible=!visible">{{ visible ? '隐藏' : '显示' }}</view></label>
+        <view class="auth-inline-link" @tap="!submitting && (smsMode = !smsMode)">{{ smsMode ? '使用密码登录' : '使用短信验证码登录' }}</view>
         <button class="auth-primary" :disabled="submitting" @tap="submit">{{ submitting ? '登录中…' : '登录' }}</button>
         <!-- #ifdef MP-WEIXIN -->
         <view class="wechat-divider"><text>或</text></view>
@@ -26,15 +27,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { loginWithPassword, loginWithWechatMiniProgram } from '@/services/auth'
+import { loginWithPassword, loginWithSms, loginWithWechatMiniProgram } from '@/services/auth'
+import { useSmsCode } from '@/composables/useSmsCode'
 import { enterProviderApp } from '@/services/providerApplication'
 import LegalConsent from '@/components/LegalConsent.vue'
 import { openLegalDocument } from '@/content/legal'
 
 const phone=ref(''),password=ref(''),visible=ref(false),agreed=ref(false),submitting=ref(false),wechatSubmitting=ref(false),redirect=ref('')
 const closurePending=ref(false)
+const smsMode = ref(false), code = ref('')
+const { seconds, sending, send } = useSmsCode('login')
 onLoad(query=>{redirect.value=typeof query?.redirect==='string'?decodeURIComponent(query.redirect):'';closurePending.value=query?.closurePending==='1'})
 function warn(title:string){uni.showToast({title,icon:'none'})}
+async function sendCode() {
+  if (!/^1[3-9]\d{9}$/.test(phone.value)) return warn('请输入正确的手机号')
+  if (!agreed.value) return warn('请先阅读并同意用户协议和隐私政策')
+  try { await send(phone.value) }
+  catch (reason) { warn((reason as Error).message || '发送失败，请重试') }
+}
 function getWechatLoginCode():Promise<string>{return new Promise((resolve,reject)=>{uni.login({provider:'weixin',success:(result)=>result.code?resolve(result.code):reject(new Error('登录验证失败，请重试')),fail:()=>reject(new Error('登录验证失败，请重试'))})})}
 async function wechatLogin(event:{detail?:{code?:string;errMsg?:string}}){
   if(!agreed.value)return warn('请先阅读并同意用户协议和隐私政策')
@@ -47,10 +57,11 @@ async function wechatLogin(event:{detail?:{code?:string;errMsg?:string}}){
 }
 async function submit(){
   if(!/^1[3-9]\d{9}$/.test(phone.value))return warn('请输入正确的手机号')
-  if(password.value.length<8)return warn('请输入 8–20 位密码')
+  if(smsMode.value ? !/^\d{6}$/.test(code.value) : password.value.length<8)
+    return warn(smsMode.value ? '请输入 6 位验证码' : '请输入 8–20 位密码')
   if(!agreed.value)return warn('请先阅读并同意用户协议和隐私政策')
   submitting.value=true
-  try{const session=await loginWithPassword(phone.value,password.value);await enterProviderApp(redirect.value);uni.showToast({title:session.closure_cancelled?'登录成功，注销申请已撤销':'登录成功',icon:'success'})}
+  try{const session=smsMode.value?await loginWithSms(phone.value,code.value):await loginWithPassword(phone.value,password.value);await enterProviderApp(redirect.value);uni.showToast({title:session.closure_cancelled?'登录成功，注销申请已撤销':'登录成功',icon:'success'})}
   catch(reason){warn((reason as Error).message||'登录失败')}
   finally{submitting.value=false}
 }

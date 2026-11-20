@@ -1,14 +1,14 @@
 <template>
   <view class="dz-page income-page">
     <view class="dz-safe-top" />
-    <header class="dz-page-head dz-container"><button @tap="goBack">‹</button><strong class="strong-text">收入明细</strong><view /></header>
+    <header class="dz-page-head dz-container"><button @tap="goBack">‹</button><strong class="strong-text">{{ data?.store_mode ? '余额与提现' : '收入明细' }}</strong><view /></header>
     <main class="dz-container">
       <NetworkState v-if="loading" loading message="正在加载收入…" />
       <NetworkState v-else-if="error" :message="error" action-text="重新加载" @action="load" />
       <template v-else-if="data">
         <section class="income-hero">
           <text>{{ data.wallet ? '可提现余额' : '本月预计收入' }}</text><strong class="strong-text">¥{{ formatAmount(data.wallet ? data.wallet.available_amount : data.summary.month_income_amount) }}</strong>
-          <view><span>本月预计 ¥{{ formatAmount(data.summary.month_income_amount) }}</span><span>{{ data.summary.month_order_count }} 笔结算</span></view>
+          <view v-if="!data.store_mode"><span>本月预计 ¥{{ formatAmount(data.summary.month_income_amount) }}</span><span>{{ data.summary.month_order_count }} 笔结算</span></view>
           <button v-if="data.wallet" class="withdraw-button" :class="{ 'is-disabled': busy || (!data.wallet.can_withdraw && !pendingRequest) }" :disabled="busy || (!data.wallet.can_withdraw && !pendingRequest)" @tap="openWithdrawal">{{ pendingRequest ? '核实上次提现申请' : '提现到本人银行卡' }}</button>
         </section>
         <section v-if="data.wallet" class="withdraw-rules">
@@ -29,7 +29,7 @@
           <view class="withdraw-actions"><button class="cash-secondary" :disabled="busy" @tap="showWithdrawal = false">收起</button><button class="cash-primary" :disabled="busy" :loading="busy" @tap="confirmWithdrawal">{{ pendingRequest ? '核实原申请' : '确认提现' }}</button></view>
           <text v-if="cashError" class="cash-error">{{ cashError }}</text>
         </view>
-        <section class="balance-row">
+        <section v-if="!data.store_mode" class="balance-row">
           <view><text>冻结中</text><strong class="strong-text">¥{{ formatAmount(data.summary.pending_amount) }}</strong></view>
           <i />
           <view><text>累计账务结算</text><strong class="strong-text">¥{{ formatAmount(data.summary.settled_amount) }}</strong></view>
@@ -46,6 +46,7 @@
             <button v-if="['submitting', 'processing', 'unknown'].includes(item.status)" class="cash-secondary" :disabled="busy" @tap="refreshWithdrawal(item.withdrawal_no)">刷新到账状态</button>
           </view>
         </template>
+        <template v-if="!data.store_mode">
         <h2 class="section-title">结算记录</h2>
         <section v-if="data.items.length" class="income-list">
           <button v-for="item in data.items" :key="item.settlement_no">
@@ -55,6 +56,7 @@
           </button>
         </section>
         <section v-else class="empty-income"><strong class="strong-text">暂无结算记录</strong><text>服务完成并经用户确认后，收入会在这里展示。</text></section>
+        </template>
       </template>
     </main>
   </view>

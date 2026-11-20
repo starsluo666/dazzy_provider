@@ -149,6 +149,7 @@ export interface ProviderIncomeItem {
 }
 
 export interface ProviderIncomeData {
+  store_mode?: boolean
   wallet?: {
     available_amount: number
     reserved_amount: number

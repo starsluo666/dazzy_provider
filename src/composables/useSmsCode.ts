@@ -1,7 +1,7 @@
 import { onUnmounted, ref } from 'vue'
 import { sendSmsCode } from '@/services/auth'
 
-export function useSmsCode(purpose: 'register') {
+export function useSmsCode(purpose: 'register' | 'login') {
   const seconds = ref(0), sending = ref(false)
   let timer: ReturnType<typeof setInterval> | undefined
   async function send(phone: string) {

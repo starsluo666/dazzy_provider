@@ -67,7 +67,7 @@ const message = (reason: unknown) => reason instanceof Error ? reason.message : 
 async function load() {
   loading.value = true; loadError.value = ''; invite.value = null
   try {
-    if (!/^[A-F0-9]{12}$/.test(sourceCode.value)) throw new Error('邀请链接无效，请重新打开邀请卡片。')
+    if (!/^(?:[A-Z0-9]{4}|[A-F0-9]{12})$/.test(sourceCode.value)) throw new Error('邀请链接无效，请重新打开邀请卡片。')
     invite.value = (await getProviderInvite(sourceCode.value)).data
   } catch (reason) { loadError.value = message(reason) }
   finally { loading.value = false }

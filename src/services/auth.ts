@@ -2,10 +2,18 @@ import type { AccountClosureSubmission, AccountSecurity, AuthSession, DataRespon
 import { request } from './http'
 import { clearSession, getRefreshToken, saveSession } from './session'
 
-export function sendSmsCode(phone: string, purpose: 'register') {
+export function sendSmsCode(phone: string, purpose: 'register' | 'login') {
   return request<DataResponse<{ expires_in: number; retry_after: number; debug_code?: string }>>(
     '/auth/sms-codes/', { method: 'POST', data: { phone, purpose }, skipAuth: true },
   )
+}
+
+export async function loginWithSms(phone: string, code: string) {
+  const { data } = await request<DataResponse<AuthSession>>('/auth/login/sms/', {
+    method: 'POST', data: { phone, code }, skipAuth: true,
+  })
+  saveSession(data)
+  return data
 }
 
 export async function loginWithPassword(phone: string, password: string) {

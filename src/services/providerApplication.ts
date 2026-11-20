@@ -3,7 +3,7 @@ import { request } from './http'
 import { returnAfterAuthentication } from './session'
 
 export interface ProviderApplication {
-  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'suspended'
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'suspended' | 'store'
   application_real_name: string
   service_city_name: string
   invitation_code: string
@@ -17,7 +17,7 @@ export const getProviderApplication = () => request<DataResponse<ProviderApplica
 export async function redirectToApplicationIfNeeded(): Promise<boolean> {
   const { data } = await getProviderApplication()
   if (data?.status === 'approved') return false
-  uni.reLaunch({ url: APPLICATION_PAGE })
+  uni.reLaunch({ url: data?.status === 'store' ? '/pages/store/index' : APPLICATION_PAGE })
   return true
 }
 

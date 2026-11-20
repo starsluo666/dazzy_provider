@@ -58,6 +58,21 @@ async function main() {
   await assert.rejects(application.enterProviderApp(), /offline/)
   assert.equal(navigation.length, 0, 'network failure is not interpreted as approval or rejection')
 
+  const inviteHooks = {}, fetchedCodes = []
+  const ref = value => ({ value })
+  load('pages/invitations/register.vue', {
+    vue: { ref, shallowRef: ref, reactive: value => value, computed: value => ({ get value() { return value() } }) },
+    '@dcloudio/uni-app': { onLoad: fn => { inviteHooks.load = fn } },
+    '@/components/LegalConsent.vue': {},
+    '@/content/legal': { openLegalDocument() {} },
+    '@/composables/useSmsCode': { useSmsCode: () => ({ seconds: ref(0), sending: ref(false), send: async () => {} }) },
+    '@/services/providerInvites': { getProviderInvite: async code => { fetchedCodes.push(code); return { data: {} } }, registerInvitedProvider() {} },
+  }, { uni })
+  inviteHooks.load({ code: 'a7k9' })
+  inviteHooks.load({ code: 'abcdef123456' })
+  inviteHooks.load({ code: 'ABC' })
+  assert.deepEqual(fetchedCodes, ['A7K9', 'ABCDEF123456'])
+
   const uploads = [], requests = []
   const http = load('services/http.ts', { './session': {
     getAccessToken: () => 'existing-account-token', getRefreshToken: () => 'existing-refresh',

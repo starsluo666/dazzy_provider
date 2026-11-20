@@ -5,14 +5,15 @@
       <view v-if="error" class="notice"><text>{{ error }}</text><button class="secondary" @tap="load">重新加载</button></view>
       <view v-else-if="loading" class="notice">正在加载邀请信息…</view>
       <template v-else-if="data">
-        <view class="card hero"><text class="eyebrow">推荐新伙伴</text><text class="title">一起成为乐搭伴达人</text><text class="description">新朋友注册并提交完整入驻意向后，记一次邀请奖励。经平台财务核验后人工打款。</text>
-          <view class="reward"><text>当前每位奖励</text><text class="amount">{{ money(data.reward_amount) }}</text></view>
+        <view class="card hero"><text class="eyebrow">推荐新伙伴</text><text class="title">一起成为乐搭伴达人</text><text class="description">符合活动条件的奖励经财务核验后发放至收款账户。</text>
+          <view v-if="data.reward_amount" class="reward"><text>注册奖励</text><text class="amount">{{ money(data.reward_amount) }}</text></view>
+          <view v-if="data.first_order?.enabled" class="reward"><text>首单奖励</text><text class="amount">{{ data.first_order.mode === 'fixed' ? money(data.first_order.amount) : `${data.first_order.rate_bps / 100}%` }}</text></view>
           <template v-if="data.enabled && data.source"><image class="qr" :src="data.qr_data" mode="aspectFit" :show-menu-by-longpress="true" /><text class="code">专属邀请码 {{ data.source.code }}</text><button class="primary" @tap="copyLink">复制邀请链接</button><text class="hint">分享二维码或链接，新朋友扫码即可打开邀请网页，填写注册与入驻资料；初审通过后前往达人端完善接单资料。</text></template>
           <text v-else class="notice">邀请活动暂未开放，请留意平台通知。</text>
         </view>
         <view class="summary"><view v-for="status in ['pending', 'approved', 'paid']" :key="status" class="metric"><text>{{ labels[status] }}</text><text class="metric-value">{{ money(data.summary.find(s => s.status === status)?.amount || 0) }}</text></view></view>
-        <view class="card"><view class="list-heading"><text class="section-title">邀请记录</text><text class="hint">共 {{ data.pagination.total }} 位</text></view><text v-if="!data.items.length" class="hint">还没有邀请记录，邀请新朋友加入吧。</text><view v-for="item in data.items" :key="item.public_id" class="record"><view><text>{{ item.invitee_phone_masked }}</text><text class="hint">{{ item.created_at.slice(0, 10) }}</text></view><view class="record-right"><text>{{ money(item.amount) }}</text><text class="hint">{{ item.status_label }}</text></view></view><view class="pagination"><button class="secondary" :disabled="page === 1" @tap="turn(-1)">上一页</button><text>{{ page }}</text><button class="secondary" :disabled="page * 20 >= data.pagination.total" @tap="turn(1)">下一页</button></view></view>
-        <text class="footnote">奖励独立于订单收入，不计入可提现余额。已有账号、重复注册不计奖；奖励以注册时金额和财务核验结果为准。</text>
+        <view class="card"><view class="list-heading"><text class="section-title">奖励记录</text><text class="hint">共 {{ data.pagination.total }} 笔</text></view><text v-if="!data.items.length" class="hint">暂无奖励记录</text><view v-for="item in data.items" :key="item.public_id" class="record"><view><text>{{ item.reward_kind_label || '注册奖励' }} · {{ item.invitee_phone_masked }}</text><text class="hint">{{ item.order_no ? `${item.order_no} · ` : '' }}{{ item.created_at.slice(0, 10) }}</text></view><view class="record-right"><text>{{ money(item.amount) }}</text><text class="hint">{{ item.status_label }}</text></view></view><view class="pagination"><button class="secondary" :disabled="page === 1" @tap="turn(-1)">上一页</button><text>{{ page }}</text><button class="secondary" :disabled="page * 20 >= data.pagination.total" @tap="turn(1)">下一页</button></view></view>
+        <text class="footnote">首单比例奖励按优惠后的实付服务费计算。汇付奖励确认到账后计入可提现余额。</text>
       </template>
     </view>
   </view>
@@ -25,8 +26,9 @@ import { request } from '@/services/http'
 interface InviteSummary {
   source: { code: string; name: string; invite_url: string } | null
   enabled: boolean; reward_amount: number; qr_data: string
+  first_order?: { enabled: boolean; mode: 'fixed' | 'percentage'; amount: number; rate_bps: number }
   summary: Array<{ status: string; amount: number; count: number }>
-  items: Array<{ public_id: string; invitee_phone_masked: string; amount: number; status_label: string; created_at: string }>
+  items: Array<{ public_id: string; invitee_phone_masked: string; amount: number; status_label: string; created_at: string; reward_kind_label?: string; order_no?: string }>
   pagination: { total: number }
 }
 const data = ref<InviteSummary | null>(null), loading = ref(true), error = ref(''), page = ref(1)

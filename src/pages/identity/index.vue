@@ -146,7 +146,7 @@ const statusHeading = computed(() => checkingIdentity.value ? '身份证识别�
   verified: '已认证',
   rejected: '认证未通过',
 }[data.value?.identity_status || 'unverified']))
-const statusCopy = computed(() => ({ unverified: '上传证件与本人自拍，姓名和号码自动识别', pending: '证件与自拍已提交，等待客服人工审核', verified: '身份核验已完成，可继续完善资料和服务', rejected: '请根据原因修改照片后重新提交' }[data.value?.identity_status || 'unverified']))
+const statusCopy = computed(() => ({ unverified: '上传证件与本人自拍，姓名和号码自动识别', pending: '证件与自拍已提交，等待客服人工审核', verified: '身份核验已完成', rejected: '请根据原因修改照片后重新提交' }[data.value?.identity_status || 'unverified']))
 const progressSteps = ['人像面', '国徽面', '本人自拍']
 const photoItems = computed(() => [
   { key: 'identity_front_photo' as PhotoKey, label: '身份证人像面', help: '证件正面，姓名与号码清晰', id: form.identity_front_photo_id, url: previews.identity_front_photo, glyph: 'camera-glyph' },

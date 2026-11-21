@@ -32,7 +32,7 @@
       </view>
       <view v-for="order in (loading || error ? [] : visibleOrders)" :key="order.order_no" class="order-card">
         <view class="card-header">
-          <text class="order-status" :class="'tone-' + statusTone(order.status, order.fulfillment_review_required)">{{ statusLabel(order.status, order.fulfillment_review_required) }}</text>
+          <text class="order-status" :class="'tone-' + statusTone(order.status, order.fulfillment_review_required)">{{ order.renewal_of_order_no && order.status === 'pending_service' && !order.fulfillment_review_required ? '待续服务' : statusLabel(order.status, order.fulfillment_review_required) }}</text>
           <button class="detail-link" aria-label="查看订单详情" hover-class="dz-pressed" @tap="openDetail(order)">订单详情 ›</button>
         </view>
         <view class="customer-row" @tap="openDetail(order)">
@@ -194,7 +194,7 @@ function acceptanceCopy(order: ProviderManagedOrder) {
 function actionLabel(order: ProviderManagedOrder) {
   if (order.status === 'departed' && order.cancellation?.wait_state === 'waiting') return '查看等待进度'
   if (order.status === 'pending_acceptance') return '接受订单'
-  if (order.status === 'pending_service') return '确认出发'
+  if (order.status === 'pending_service') return order.renewal_of_order_no ? '查看续单' : '确认出发'
   if (order.status === 'departed') return order.arrival_photo_url ? '开始服务' : '上传集合照'
   if (order.status === 'in_service') return '提交完成'
   return ''
@@ -202,7 +202,7 @@ function actionLabel(order: ProviderManagedOrder) {
 function nextStepTitle(order: ProviderManagedOrder) {
   if (order.status === 'departed' && order.cancellation?.wait_state === 'waiting') return '正在等待联系用户'
   if (order.status === 'pending_acceptance') return '等待你确认'
-  if (order.status === 'pending_service') return '下一步：确认出发'
+  if (order.status === 'pending_service') return order.renewal_of_order_no ? '下一步：开始续单' : '下一步：确认出发'
   if (order.status === 'departed' && !order.arrival_photo_url) return '下一步：到场拍照'
   if (order.status === 'departed') return '集合照已留存'
   if (order.status === 'in_service') return '服务正在进行'
@@ -216,7 +216,10 @@ function nextStepCopy(order: ProviderManagedOrder) {
   if (order.timeout?.timed_out_at) return `${order.timeout.reason} · ${order.timeout.refund_label}`
   if (order.fulfillment_review_required) return ''
   if (order.status === 'pending_acceptance') return acceptanceCopy(order)
-  if (order.status === 'pending_service') return order.provider_contact_initiated_at ? '出发前请确认已与用户核实订单' : '请先联系用户，核实订单情况'
+  if (order.status === 'pending_service') {
+    if (order.renewal_of_order_no) return '原订单完成后，按预约时间开始续单'
+    return order.provider_contact_initiated_at ? '出发前请确认已与用户核实订单' : '请先联系用户，核实订单情况'
+  }
   if (order.status === 'departed' && !order.arrival_photo_url) return '抵达集合地点后上传现场照片'
   if (order.status === 'departed') return '可与用户核对后开始服务'
   if (order.status === 'in_service') return '服务结束后提交完成，等待用户确认'
@@ -231,7 +234,7 @@ function evidenceTime(order: ProviderManagedOrder) {
 }
 function isActionDisabled(order: ProviderManagedOrder) {
   return Boolean(busyOrderNo.value || (order.status === 'pending_acceptance' && isExpired(order))
-    || (order.status === 'pending_service' && !order.provider_contact_initiated_at))
+    || (order.status === 'pending_service' && !order.provider_contact_initiated_at && !order.renewal_of_order_no))
 }
 function updateOrder(updated: ProviderManagedOrder) {
   const index = orders.value.findIndex((item) => item.order_no === updated.order_no)
@@ -349,7 +352,7 @@ function performAction(order: ProviderManagedOrder) {
   if (busyOrderNo.value) return
   if (order.status === 'departed' && order.cancellation?.wait_state === 'waiting') return openDetail(order)
   if (order.status === 'pending_acceptance') return accept(order)
-  if (order.status === 'pending_service') return depart(order)
+  if (order.status === 'pending_service') return order.renewal_of_order_no ? openDetail(order) : depart(order)
   if (order.status === 'departed' && !order.arrival_photo_url) return uploadEvidence(order)
   if (order.status === 'departed') return start(order)
   if (order.status === 'in_service') return complete(order)

@@ -259,6 +259,8 @@ export interface OrderTerminationSummary {
 }
 
 export interface ProviderManagedOrder {
+  renewal_of_order_no?: string | null
+  next_renewal_order_no?: string | null
   cancellation?: {
     policy: { version?: string }; transport_mode_label: string; arrived_at: string | null
     wait_state: string; wait_deadline_at: string | null; finance_notice: string

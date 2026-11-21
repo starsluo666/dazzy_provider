@@ -17,7 +17,7 @@
         <section class="status-hero" :class="statusTone(order.status, order.fulfillment_review_required)">
           <view class="status-line">
             <view class="status-pill" :class="statusTone(order.status, order.fulfillment_review_required)">
-              <i />{{ statusLabel(order.status, order.fulfillment_review_required) }}
+              <i />{{ order.renewal_of_order_no && order.status === 'pending_service' && !order.fulfillment_review_required ? '待续服务' : statusLabel(order.status, order.fulfillment_review_required) }}
             </view>
             <text>{{ order.order_no }}</text>
           </view>
@@ -65,6 +65,12 @@
               <small class="row-label">预约时间</small>
               <strong class="strong-text row-value time-value">{{ timeRange(order.starts_at, order.ends_at) }}</strong>
             </view>
+          </view>
+          <view v-if="order.renewal_of_order_no || order.next_renewal_order_no" class="info-row">
+            <view class="row-icon cyan">续</view>
+            <view class="row-copy"><strong class="strong-text row-value">{{ order.renewal_of_order_no ? '接续原服务' : '用户已续单' }}</strong></view>
+            <button v-if="order.renewal_of_order_no" class="mini-action" @tap="openRelatedOrder(order.renewal_of_order_no)">原订单</button>
+            <button v-if="order.next_renewal_order_no" class="mini-action" @tap="openRelatedOrder(order.next_renewal_order_no)">续单详情</button>
           </view>
           <view class="info-row address-row">
             <view class="row-icon orange">地</view>
@@ -203,14 +209,12 @@ const canNavigate = computed(() => Boolean(order.value?.meeting_longitude && ord
 const showActionBar = computed(() => Boolean(order.value && actionLabel(order.value)))
 const actionDisabled = computed(() => Boolean(order.value && (
   (order.value.status === 'pending_acceptance' && isExpired(order.value))
-  || (order.value.status === 'pending_service' && !order.value.provider_contact_initiated_at)
+  || (order.value.status === 'pending_service' && !order.value.provider_contact_initiated_at && !order.value.renewal_of_order_no)
 )))
 const priceRows = computed(() => {
   if (!order.value) return []
-  const rows = [
-    { label: '服务费', value: order.value.service_fee_amount },
-    { label: '交通费', value: order.value.transport_fee_amount },
-  ]
+  const rows = [{ label: '服务费', value: order.value.service_fee_amount }]
+  if (!order.value.renewal_of_order_no) rows.push({ label: '交通费', value: order.value.transport_fee_amount })
   if (order.value.other_fee_amount) rows.push({ label: '其他费用', value: order.value.other_fee_amount })
   if (order.value.discount_amount) rows.push({ label: '优惠', value: -order.value.discount_amount })
   return rows
@@ -241,7 +245,9 @@ const timeline = computed<TimelineItem[]>(() => {
   )
   const next = {
     pending_acceptance: ['等待达人接单', acceptanceCopy(item)],
-    pending_service: ['等待出发', item.provider_contact_initiated_at ? '出发前请确认已与用户核实订单' : '请先点击手机号旁的联系按钮'],
+    pending_service: item.renewal_of_order_no
+      ? ['待续服务', '提交原订单完成后，按预约时间开始续单']
+      : ['等待出发', item.provider_contact_initiated_at ? '出发前请确认已与用户核实订单' : '请先点击手机号旁的联系按钮'],
     departed: item.arrival_photo_url ? ['等待开始服务', '与用户会合后确认开始'] : ['等待上传集合照', '抵达集合地点后拍照并留存位置'],
     in_service: ['服务进行中', '服务结束后提交完成'],
     pending_confirmation: [
@@ -307,7 +313,9 @@ function nextStepCopy(item: ProviderManagedOrder) {
   if (item.timeout?.timed_out_at) return `${item.timeout.reason} · ${item.timeout.refund_label}`
   if (item.fulfillment_review_required) return '履约异常 · 待客服审核'
   if (item.status === 'pending_acceptance') return acceptanceCopy(item)
-  if (item.status === 'pending_service') return '接受订单后，可查看完整电话与导航位置'
+  if (item.status === 'pending_service') return item.renewal_of_order_no
+    ? '请先提交原订单完成，再按续单时间开始服务'
+    : '接受订单后，可查看完整电话与导航位置'
   if (item.status === 'departed' && !item.arrival_photo_url) return '抵达集合地点后，请上传现场照片'
   if (item.status === 'departed') return '集合照已留存，与用户会合后开始服务'
   if (item.status === 'in_service') return '服务结束后提交完成，等待用户确认'
@@ -318,7 +326,7 @@ function nextStepCopy(item: ProviderManagedOrder) {
 function actionLabel(item: ProviderManagedOrder) {
   if (item.status === 'departed' && item.cancellation?.wait_state === 'waiting') return ''
   if (item.status === 'pending_acceptance') return '接受订单'
-  if (item.status === 'pending_service') return '确认出发'
+  if (item.status === 'pending_service') return item.renewal_of_order_no ? '开始续单' : '确认出发'
   if (item.status === 'departed') return item.arrival_photo_url ? '开始服务' : '上传集合照'
   if (item.status === 'in_service') return '提交完成'
   return ''
@@ -399,24 +407,32 @@ async function uploadEvidence() {
   }
 }
 async function startOrder() {
-  const confirmed = await confirmAction('开始服务', '请确认本人已与用户会合，且已上传清晰包含本人的到场照片。开始后订单将进入服务中。')
+  const renewal = Boolean(order.value?.renewal_of_order_no)
+  const confirmed = renewal
+    ? await confirmAction('开始续单', '请确认原订单已提交完成，并已到续单预约时间。')
+    : await confirmAction('开始服务', '请确认本人已与用户会合，且已上传清晰包含本人的到场照片。开始后订单将进入服务中。')
   if (confirmed) await runUpdate('开始中…', () => startManagedProviderOrder(orderNo.value))
 }
 async function completeOrder() {
   const confirmed = await confirmAction('提交服务完成', '将获取并保存当前定位，核对订单时间。时间异常时会暂停自动确认与分账，由客服审核。请确认约定服务已完成。')
-  if (confirmed) await runUpdate('定位并提交…', async () => completeManagedProviderOrder(orderNo.value, await getCurrentLocation()))
+  if (confirmed && await runUpdate('定位并提交…', async () => completeManagedProviderOrder(orderNo.value, await getCurrentLocation()))) {
+    await load()
+  }
 }
 function performPrimaryAction() {
   if (!order.value) return
   if (order.value.cancellation?.wait_state === 'waiting') return
   if (order.value.status === 'pending_acceptance') return acceptOrder()
-  if (order.value.status === 'pending_service') return departOrder()
+  if (order.value.status === 'pending_service') return order.value.renewal_of_order_no ? startOrder() : departOrder()
   if (order.value.status === 'departed' && !order.value.arrival_photo_url) return uploadEvidence()
   if (order.value.status === 'departed') return startOrder()
   if (order.value.status === 'in_service') return completeOrder()
 }
 function openReject() {
   rejectVisible.value = true
+}
+function openRelatedOrder(orderNumber: string) {
+  uni.navigateTo({ url: `/pages/orders/detail?order_no=${encodeURIComponent(orderNumber)}` })
 }
 function closeReject() {
   if (!busy.value) rejectVisible.value = false

@@ -1,7 +1,7 @@
 {
-  "name": "DAZZY达人端",
+  "name": "乐搭伴达人端",
   "appid": "wx7331b97b90eb8db7",
-  "description": "DAZZY 达人接单与服务工作台",
+  "description": "乐搭伴达人接单与服务工作台",
   "versionName": "0.1.0",
   "versionCode": "10",
   "transformPx": false,

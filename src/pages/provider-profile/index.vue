@@ -3,7 +3,7 @@
     <view class="dz-safe-top" />
     <header class="page-nav dz-management-head dz-container">
       <button class="nav-back dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="back">‹</button>
-      <strong class="strong-text">达人资料</strong>
+      <text class="dz-page-title strong-text">达人资料</text>
       <view class="nav-space" />
     </header>
 

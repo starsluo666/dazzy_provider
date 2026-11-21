@@ -4,7 +4,7 @@
       <view class="dz-safe-top" />
       <header class="detail-nav dz-container">
         <button class="dz-tappable" aria-label="返回" hover-class="dz-pressed" @tap="goBack">‹</button>
-        <strong class="strong-text">订单详情</strong>
+        <text class="dz-page-title strong-text">订单详情</text>
         <button class="refresh dz-tappable" aria-label="刷新订单" :disabled="loading" hover-class="dz-pressed" @tap="load">↻</button>
       </header>
     </view>

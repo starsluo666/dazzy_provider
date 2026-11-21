@@ -2,7 +2,9 @@
   <view class="dz-page dz-management-page schedule-page">
     <view class="dz-safe-top" />
     <header class="nav dz-management-head dz-container">
-      <button class="nav-back dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="goBack">‹</button><strong class="strong-text">档期管理</strong><button class="rule dz-tappable" hover-class="dz-pressed" @tap="showRule">规则</button>
+      <button class="nav-back dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="goBack">‹</button>
+      <text class="dz-page-title strong-text">档期管理</text>
+      <button class="rule dz-tappable" hover-class="dz-pressed" @tap="showRule">规则</button>
     </header>
     <main>
       <section class="week-head dz-container">

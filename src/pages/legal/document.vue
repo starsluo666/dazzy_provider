@@ -2,8 +2,9 @@
   <view class="dz-page legal-page">
     <view class="dz-safe-top" />
     <header class="legal-nav dz-page-head dz-container">
-      <button aria-label="返回" @tap="goBack">‹</button>
-      <strong>{{ document?.navTitle || '协议详情' }}</strong><view />
+      <button class="nav-back" aria-label="返回" @tap="goBack">‹</button>
+      <text class="dz-page-title strong-text">{{ document?.navTitle || '协议详情' }}</text>
+      <view class="nav-space" />
     </header>
     <main v-if="document" class="legal-content dz-container">
       <article class="reading-card">
@@ -71,8 +72,8 @@ function scrollToHeading(id: string) {
 <style lang="scss" scoped>
 @use '../../styles/tokens.scss' as *;
 .legal-nav { display:flex; align-items:center; justify-content:space-between; min-height:44px; }
-.legal-nav button, .legal-nav > view { display:flex; align-items:center; justify-content:center; width:44px; height:44px; flex:none; margin:0; padding:0; border:0; background:transparent; font-size:32px; line-height:1; }
-.legal-nav strong { color:$dz-text-primary; font-size:18px; }
+.nav-back, .nav-space { display:flex; align-items:center; justify-content:center; width:44px; height:44px; flex:none; margin:0; padding:0; border:0; background:transparent; font-size:32px; line-height:1; }
+.legal-nav .dz-page-title { color:$dz-text-primary; font-size:18px; }
 .legal-content { padding-top: 24rpx; padding-bottom: calc(#{40rpx} + env(safe-area-inset-bottom)); }
 .reading-card { padding: 40rpx 32rpx; border-radius: $dz-radius-md; background: $dz-surface-card; }
 .document-header { margin-bottom: 32rpx; }

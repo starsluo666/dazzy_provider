@@ -3,7 +3,7 @@
     <view class="dz-safe-top" />
     <view class="page-nav dz-management-head dz-container">
       <button class="nav-back dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="back"><text>‹</text></button>
-      <text class="nav-title">接单学习</text><view class="nav-space" />
+      <text class="dz-page-title nav-title">接单学习</text><view class="nav-space" />
     </view>
     <view class="dz-container training-content">
       <NetworkState v-if="loading" loading message="正在加载学习资料…" />

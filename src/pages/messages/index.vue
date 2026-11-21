@@ -3,7 +3,7 @@
     <view class="dz-safe-top" />
     <header class="page-head dz-container">
       <button aria-label="返回" hover-class="dz-pressed" @tap="goBack">‹</button>
-      <strong class="strong-text">消息中心</strong>
+      <text class="dz-page-title strong-text">消息中心</text>
       <button class="read-all" :disabled="markingAll || !currentUnread" @tap="markAll">
         {{ markingAll ? '处理中' : '全部已读' }}
       </button>

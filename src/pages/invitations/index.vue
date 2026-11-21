@@ -1,6 +1,10 @@
 <template>
   <view class="page">
-    <view class="dz-safe-top" /><view class="invite-nav"><button class="back" aria-label="返回" @tap="goBack">‹</button><text>邀请达人</text></view>
+    <view class="dz-safe-top" />
+    <view class="invite-nav">
+      <button class="back" aria-label="返回" @tap="goBack">‹</button>
+      <text class="dz-page-title">邀请达人</text>
+    </view>
     <view class="content">
       <view v-if="error" class="notice"><text>{{ error }}</text><button class="secondary" @tap="load">重新加载</button></view>
       <view v-else-if="loading" class="notice">正在加载邀请信息…</view>

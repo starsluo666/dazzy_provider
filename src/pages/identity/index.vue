@@ -3,7 +3,7 @@
     <view class="dz-safe-top" />
     <view class="page-nav dz-management-head dz-container">
       <button class="nav-back dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="back">‹</button>
-      <text class="page-title">实名认证</text>
+      <text class="dz-page-title page-title">实名认证</text>
       <view class="nav-space" />
     </view>
 

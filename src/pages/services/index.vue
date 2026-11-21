@@ -4,7 +4,7 @@
       <view class="dz-safe-top" />
       <view class="nav dz-management-head dz-container">
         <button class="nav-back dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="goBack">‹</button>
-        <text class="page-title">服务管理</text>
+        <text class="dz-page-title page-title">服务管理</text>
         <view class="nav-spacer" />
       </view>
     </view>

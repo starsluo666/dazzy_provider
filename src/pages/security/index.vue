@@ -4,7 +4,7 @@
       <view class="dz-safe-top" />
       <header class="dz-page-head dz-management-head dz-container">
         <button class="dz-tappable" hover-class="dz-pressed" aria-label="返回" @tap="goBack">‹</button>
-        <strong class="strong-text">账号设置</strong>
+        <text class="dz-page-title strong-text">账号设置</text>
         <view class="head-space" />
       </header>
     </view>

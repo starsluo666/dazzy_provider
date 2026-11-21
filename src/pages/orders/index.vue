@@ -4,7 +4,7 @@
       <view class="dz-safe-top" />
       <view class="page-head dz-container">
         <view class="head-spacer" />
-        <text class="page-title">达人订单</text>
+        <text class="dz-page-title page-title">达人订单</text>
         <button class="refresh" aria-label="刷新订单" :disabled="loading || !!busyOrderNo" hover-class="dz-pressed" @tap="load">
           <image class="refresh-icon" src="/static/icons/refresh.svg" mode="aspectFit" />
         </button>

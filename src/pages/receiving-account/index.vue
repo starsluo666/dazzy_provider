@@ -3,7 +3,7 @@
     <view class="dz-safe-top" />
     <view class="dz-page-head dz-container">
       <button class="back-button" aria-label="返回" @tap="goBack">‹</button>
-      <text class="page-title">收款账户</text>
+      <text class="dz-page-title page-title">收款账户</text>
       <view class="head-spacer" />
     </view>
     <view class="dz-container receiving-content">

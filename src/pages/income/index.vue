@@ -17,11 +17,9 @@
         </section>
         <section v-if="data.wallet" class="withdraw-rules">
           <text class="rules-title">提现规则</text>
-          <view class="rule-row"><text>可提现额度</text><text>{{ data.wallet.max_withdrawal_amount > 0 ? `不超过当前可提现余额，单笔最高 ¥${formatAmount(data.wallet.max_withdrawal_amount)}` : '不超过当前可提现余额；单笔限额以页面可用额度为准' }}</text></view>
-          <view class="rule-row"><text>申请次数</text><text>暂无每日次数上限；同一时间仅可有一笔提现处理中</text></view>
-          <view class="rule-row"><text>申请时间</text><text>暂无固定申请时段；渠道维护或服务异常时可能暂不可用</text></view>
-          <view class="rule-row"><text>到账时间</text><text>T1 为下一工作日，D1 为下一自然日；以账户开通类型、渠道处理和银行卡实际到账为准</text></view>
-          <text class="rules-footnote">仅能提现至本人已核验的银行卡，提现手续费由平台承担。收入完成账务结算并确认后才计入可提现余额。</text>
+          <view class="rule-row"><text>单笔最高</text><text>{{ data.wallet.max_withdrawal_amount > 0 ? `¥${formatAmount(data.wallet.max_withdrawal_amount)}` : '暂未设置' }}</text></view>
+          <view class="rule-row"><text>申请时间与次数</text><text>不限时段，每日不限次</text></view>
+          <view class="rule-row"><text>到账时间</text><text>{{ arrivalLabels[data.wallet.withdrawal_cash_type || ''] }}</text></view>
         </section>
         <text v-if="data.wallet?.unavailable_reason" class="ledger-note">{{ data.wallet.unavailable_reason }}</text>
         <view v-if="data.wallet" class="cash-summary"><text>提现中 ¥{{ formatAmount(data.wallet.reserved_amount) }}</text><text>已提现 ¥{{ formatAmount(data.wallet.paid_amount) }}</text></view>
@@ -83,6 +81,11 @@ const showWithdrawal = ref(false)
 const withdrawAmount = ref('')
 const cashError = ref('')
 const pendingRequest = ref<{ amount: number; request_key: string } | null>(null)
+const arrivalLabels = {
+  T1: '下一工作日到账，以实际到账为准',
+  D1: '下一自然日到账，以实际到账为准',
+  '': '以实际到账为准',
+}
 const pendingStorageKey = () => `provider-withdrawal:${getStoredUser()?.public_id || 'unknown'}`
 function openWithdrawal() {
   cashError.value = ''
@@ -172,7 +175,6 @@ onShow(load)
 .rule-row{display:flex;align-items:flex-start;justify-content:space-between;gap:24rpx;font-size:23rpx;line-height:1.55}
 .rule-row>text:first-child{flex:none;color:$dz-text-secondary}
 .rule-row>text:last-child{flex:1;color:$dz-text-primary;text-align:right}
-.rules-footnote{padding-top:14rpx;border-top:1rpx solid $dz-border;color:$dz-text-secondary;font-size:21rpx;line-height:1.6}
 .cash-summary{display:flex;justify-content:space-between;gap:16rpx;margin:20rpx 8rpx;font-size:25rpx;color:$dz-text-secondary}
 .withdraw-form,.withdraw-record{padding:26rpx;margin-top:20rpx;border:1rpx solid $dz-border;border-radius:24rpx;background:#fff}
 .withdraw-title{font-size:29rpx;font-weight:600}

@@ -15,7 +15,7 @@ npm run dev:h5
 npm run build:mp-weixin
 ```
 
-构建产物位于 `dist/build/mp-weixin`，可用微信开发者工具导入。
+构建产物位于 `dist/build/mp-weixin`。修改页面模板后，等构建完成再在微信开发者工具里编译。若页面出现 `false` 或 `[object Object]` 等错位内容，清理该项目的编译缓存后重新打开，再进入受影响的页面核对显示。
 
 ## 环境变量
 
@@ -34,4 +34,6 @@ npm run build:mp-weixin
 npm run type-check
 npm run build:h5
 npm run build:mp-weixin
+npm run test:receiving-account:mp
+node tests/incomeMp.test.cjs
 ```

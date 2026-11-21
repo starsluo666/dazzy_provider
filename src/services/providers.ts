@@ -33,8 +33,8 @@ export const getProviderReceivingAccount = () =>
 export const getReceivingBankRegions = () =>
   request<DataResponse<ReceivingBankProvince[]>>('/providers/me/receiving-account/regions/')
 
-export const submitProviderReceivingAccount = (consent_version: string) =>
-  request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/submit/', { method: 'POST', data: { consent_accepted: true, consent_version } })
+export const submitProviderReceivingAccount = (consent_version: string, expected_updated_at: string) =>
+  request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/submit/', { method: 'POST', data: { consent_accepted: true, consent_version, expected_updated_at } })
 
 export const refreshProviderReceivingAccount = () =>
   request<DataResponse<ProviderReceivingAccount>>('/providers/me/receiving-account/refresh/', { method: 'POST' })

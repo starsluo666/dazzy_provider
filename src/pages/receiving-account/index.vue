@@ -19,7 +19,7 @@
             </view>
             <text class="status-badge" :class="{ 'badge-ready': account.channel_status === 'active' }">{{ account.channel_status === 'active' ? '已开通' : '待确认' }}</text>
           </view>
-          <text class="status-description">{{ account.channel_notice }}</text>
+          <text class="status-description">{{ canApply && !account.can_refresh ? '请核对本人收款资料并授权申请开户。' : account.channel_notice }}</text>
           <view class="steps">
             <view class="step" :class="{ complete: account.identity_verified }"><text class="step-mark">{{ account.identity_verified ? '✓' : '1' }}</text><text>平台实名</text></view>
             <view class="step" :class="{ complete: account.materials_saved }"><text class="step-mark">{{ account.materials_saved ? '✓' : '2' }}</text><text>保存资料</text></view>
@@ -74,7 +74,7 @@
           </view>
 
           <view class="form-card">
-            <view class="section-heading"><text class="section-title">本人银行卡</text><text class="section-note">仅保存资料，尚未绑卡</text></view>
+            <view class="section-heading"><text class="section-title">本人银行卡</text><text class="section-note">限本人储蓄卡</text></view>
             <view class="field"><text class="field-label">银行卡号</text><input v-model="form.bank_card_number" class="field-input" type="number" :maxlength="19" :disabled="busy" :placeholder="account.materials_saved ? account.bank_card_masked : '输入本人银行卡号'" placeholder-class="field-placeholder" aria-label="银行卡号" /><text v-if="account.materials_saved" class="helper">卡号和联系电话留空时保留原资料。</text></view>
             <view class="field"><text class="field-label">开户银行</text><input v-model="form.bank_name" class="field-input" :maxlength="60" :disabled="busy" placeholder="例如：中国工商银行" placeholder-class="field-placeholder" aria-label="开户银行" /></view>
             <view class="area-fields">
@@ -84,35 +84,32 @@
             <view class="field"><text class="field-label">银行卡预留手机号</text><input v-model="form.mobile" class="field-input" type="number" :maxlength="11" :disabled="busy" :placeholder="account.materials_saved ? account.mobile_masked : '输入银行预留的本人手机号'" placeholder-class="field-placeholder" aria-label="银行卡预留手机号" /><text class="helper">同时用于开户联系，请确认与银行预留信息一致。</text></view>
           </view>
 
-          <view class="privacy-card">
+        </template>
+
+        <view v-if="needsSave || canApply || account.materials_saved" class="form-card channel-card">
+          <text class="section-title">{{ canApply || account.materials_saved ? '申请收款账户' : '保存收款资料' }}</text>
+          <view v-if="needsSave" class="privacy-card">
             <text class="notice-title">资料如何使用</text>
             <text class="helper">{{ account.collection_notice }}</text>
             <checkbox-group @change="changeConsent">
               <label class="consent-row"><checkbox class="consent-checkbox" value="accepted" :checked="consent" :disabled="busy" color="#087f86" /><text class="consent-text">我已阅读并同意以上收款资料收集说明</text></label>
             </checkbox-group>
           </view>
-          <button class="save-button" :class="{ 'is-disabled': busy || !consent }" :disabled="busy || !consent" :loading="saving" hover-class="dz-pressed" @tap="save">{{ saving ? '正在保存…' : '保存收款资料' }}</button>
-          <text class="save-note">保存不会开户、绑卡或扣款</text>
-        </template>
-        <view v-if="account.materials_saved" class="form-card channel-card">
-          <text class="section-title">申请收款账户</text>
-          <text v-if="account.can_submit" class="helper">将提交上方已保存的本人资料。若刚修改了输入内容，请先保存再申请。</text>
-          <template v-if="account.can_submit">
+          <template v-if="canApply">
             <text class="helper">{{ account.onboarding_notice }}</text>
-            <checkbox-group @change="changeOnboardingConsent"><label class="consent-row"><checkbox class="consent-checkbox" value="accepted" :checked="onboardingConsent" :disabled="busy" color="#087f86" /><text class="consent-text">我已核对已保存资料，并同意以上开户及手动提现授权</text></label></checkbox-group>
-            <text v-if="hasUnsavedChanges" class="form-error">有尚未保存的修改，请先保存资料，再申请开户。</text>
-            <button class="save-button" :class="{ 'is-disabled': busy || !onboardingConsent || hasUnsavedChanges }" :disabled="busy || !onboardingConsent || hasUnsavedChanges" :loading="submitting" @tap="submit">{{ submitting ? '正在提交…' : account.can_refresh ? '确认手动提现授权并继续' : '申请开户并开通手动提现' }}</button>
+            <checkbox-group @change="changeOnboardingConsent"><label class="consent-row"><checkbox class="consent-checkbox" value="accepted" :checked="onboardingConsent" :disabled="busy" color="#087f86" /><text class="consent-text">我已核对本人收款资料，并同意以上开户及手动提现授权</text></label></checkbox-group>
           </template>
-          <text v-else-if="!account.onboarding_enabled && !account.can_refresh" class="helper">收款账户暂未开放申请。资料已保存，不会自动提交，请联系客服。</text>
+          <text v-else-if="!account.onboarding_enabled && !account.can_refresh" class="helper">{{ needsSave ? '收款账户暂未开放申请，可先保存资料。' : '收款账户暂未开放申请。资料已保存，不会自动提交。' }}</text>
           <text v-else class="helper">{{ account.channel_notice }}</text>
+          <text v-if="formError" class="form-error" role="alert">{{ formError }}</text>
+          <button v-if="needsSave || canApply" class="save-button" :class="{ 'is-disabled': actionDisabled }" :disabled="actionDisabled" :loading="saving || submitting" hover-class="dz-pressed" @tap="saveOrApply">{{ actionLabel }}</button>
           <view v-if="account.can_refresh" class="channel-checks">
             <view class="channel-check"><text>本人提现卡</text><text :class="{ 'check-ready': account.card_status === 'S' }">{{ account.card_status === 'S' ? '已确认' : account.card_status === 'F' ? '未通过，请核实' : '待核实' }}</text></view>
             <view class="channel-check"><text>提现账户</text><text :class="{ 'check-ready': account.channel_status === 'active' }">{{ account.channel_status === 'active' ? '已开通' : ['attention', 'rejected'].includes(account.channel_status) ? '需处理' : '待确认' }}</text></view>
           </view>
           <button v-if="account.can_refresh" class="secondary-button" :disabled="busy" :loading="refreshing" @tap="refresh">{{ refreshing ? '正在查询…' : '刷新开户状态' }}</button>
-          <text class="helper">收入计入可提现余额后，由你主动申请提现。账户开通后，是否可提现请查看收入页；开通不代表银行卡已到账。</text>
+          <text v-if="account.materials_saved" class="helper">收入计入可提现余额后，由你主动申请提现。账户开通后，是否可提现请查看收入页；开通不代表银行卡已到账。</text>
         </view>
-        <text v-if="formError" class="form-error" role="alert">{{ formError }}</text>
         <button v-if="account.can_clear" class="clear-button" :disabled="busy" :loading="clearing" hover-class="dz-pressed" @tap="confirmClear">清除已保存的收款资料</button>
       </template>
     </view>
@@ -144,7 +141,23 @@ const now = new Date()
 const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 const form = reactive({ id_number: '', bank_card_number: '', mobile: '', cert_begin_date: '', cert_end_date: '', cert_long_term: false, bank_name: '', bank_province: '', bank_city: '', bank_province_code: '', bank_city_code: '' })
 const savedForm = ref('')
-const hasUnsavedChanges = computed(() => Boolean(account.value?.can_edit && JSON.stringify(form) !== savedForm.value))
+const needsSave = computed(() => Boolean(
+  account.value?.identity_verified && account.value.can_edit
+  && (!account.value.materials_saved || JSON.stringify(form) !== savedForm.value),
+))
+const canApply = computed(() => Boolean(
+  account.value?.identity_verified
+  && (account.value.can_submit || (account.value.can_edit && account.value.onboarding_enabled)),
+))
+const actionDisabled = computed(() => busy.value
+  || (needsSave.value && !consent.value) || (canApply.value && !onboardingConsent.value))
+const actionLabel = computed(() => {
+  if (saving.value) return '正在保存…'
+  if (submitting.value) return '正在申请开户…'
+  if (!canApply.value) return '保存收款资料'
+  if (needsSave.value) return '保存并申请开户'
+  return account.value?.can_refresh ? '确认授权并继续' : '申请开户'
+})
 const provinceIndex = computed(() => Math.max(0, regions.value.findIndex(p => p.code === form.bank_province_code)))
 const cities = computed(() => regions.value.find(p => p.code === form.bank_province_code)?.cities || [])
 const cityIndex = computed(() => Math.max(0, cities.value.findIndex(c => c.code === form.bank_city_code)))
@@ -180,25 +193,40 @@ async function load() {
   catch (reason) { error.value = getErrorMessage(reason, '收款资料加载失败') }
   finally { loading.value = false }
 }
-async function save() {
-  if (busy.value || !consent.value || !account.value?.can_edit) return
-  formError.value = ''
-  if ((!account.value.materials_saved && (!form.id_number.trim() || !form.bank_card_number.trim() || !form.mobile.trim())) || !form.cert_begin_date || (!form.cert_long_term && !form.cert_end_date) || !form.bank_name.trim() || !form.bank_province_code || !form.bank_city_code) {
+async function saveMaterials(current: ProviderReceivingAccount) {
+  if ((!current.materials_saved && (!form.id_number.trim() || !form.bank_card_number.trim() || !form.mobile.trim())) || !form.cert_begin_date || (!form.cert_long_term && !form.cert_end_date) || !form.bank_name.trim() || !form.bank_province_code || !form.bank_city_code) {
     formError.value = '请完整填写身份信息、证件有效期和本人银行卡资料。'
-    return
+    return null
   }
   saving.value = true
   try {
-    const result = await saveProviderReceivingAccount({ ...form, cert_end_date: form.cert_long_term ? null : form.cert_end_date, consent_accepted: true, consent_version: account.value.consent_version })
+    const result = await saveProviderReceivingAccount({ ...form, cert_end_date: form.cert_long_term ? null : form.cert_end_date, consent_accepted: true, consent_version: current.consent_version })
     applyAccount(result.data)
-    uni.showToast({ title: '资料已保存，待账户开通', icon: 'none' })
-  } catch (reason) { formError.value = getErrorMessage(reason, '保存失败，请稍后再试') }
+    return result.data
+  } catch (reason) {
+    formError.value = getErrorMessage(reason, '保存失败，请稍后再试')
+    return null
+  }
   finally { saving.value = false }
 }
-async function submit() {
-  if (busy.value || !onboardingConsent.value || hasUnsavedChanges.value || !account.value?.can_submit) return
-  submitting.value = true; formError.value = ''
-  try { applyAccount((await submitProviderReceivingAccount(account.value.onboarding_consent_version)).data) }
+async function saveOrApply() {
+  const current = account.value
+  const shouldSave = needsSave.value
+  const shouldApply = canApply.value
+  if (!current || actionDisabled.value || (!shouldSave && !shouldApply)) return
+  formError.value = ''
+  const saved = shouldSave ? await saveMaterials(current) : current
+  if (!saved) return
+  if (!shouldApply) {
+    uni.showToast({ title: '收款资料已保存', icon: 'none' })
+    return
+  }
+  if (!saved.can_submit || !saved.updated_at || saved.onboarding_consent_version !== current.onboarding_consent_version) {
+    formError.value = '资料已保存，请重新核对开户状态及授权说明。'
+    return
+  }
+  submitting.value = true
+  try { applyAccount((await submitProviderReceivingAccount(current.onboarding_consent_version, saved.updated_at)).data) }
   catch (reason) { formError.value = getErrorMessage(reason, '开户结果暂未确认，请刷新状态后再操作'); await load() }
   finally { submitting.value = false }
 }
@@ -237,6 +265,6 @@ onUnload(clearSensitiveInputs)
 .status-description{display:block;margin-top:22rpx;color:#566576;font-size:25rpx;line-height:1.65}.steps{display:flex;justify-content:space-between;gap:12rpx;margin-top:28rpx;padding-top:24rpx;border-top:1rpx solid #edf1f3}.step{display:flex;align-items:center;gap:8rpx;color:#697788;font-size:23rpx}.step-mark{display:flex;width:32rpx;height:32rpx;align-items:center;justify-content:center;border-radius:50%;background:#edf1f3;font-size:20rpx}.complete{color:#16754b}.complete .step-mark{background:#e2f5ea}
 .notice-title,.section-title{display:block;font-size:30rpx;font-weight:650;line-height:1.4}.notice-card .helper{margin-top:12rpx}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12rpx;flex-wrap:wrap;margin-bottom:24rpx}.section-note{color:#667788;font-size:22rpx}.field{margin-top:24rpx}.field-label{display:block;margin-bottom:12rpx;font-size:27rpx;font-weight:550;line-height:1.4}
 .field-input,.date-field,.readonly-field{box-sizing:border-box;width:100%;height:92rpx;min-height:46px;padding:0 22rpx;border:1rpx solid #dbe5e9;border-radius:18rpx;background:#f8fafb;font-size:28rpx;color:#17212b;line-height:46px}
-.date-field,.readonly-field{display:flex;align-items:center;justify-content:space-between;line-height:1.4}.readonly-field{background:#f1f5f6}.field-placeholder{color:#758390;font-size:25rpx}.chevron{color:#83939e;font-size:36rpx}.verified-label{font-size:23rpx;color:#16754b}.helper{display:block;margin-top:10rpx;color:#657485;font-size:24rpx;line-height:1.65}.validity-heading{display:flex;align-items:center;justify-content:space-between;gap:10rpx}.switch-row{display:flex;align-items:center;justify-content:flex-end}.switch-row .helper{margin:0}.area-fields{display:flex;gap:18rpx;margin-top:24rpx}.area-field{flex:1;min-width:0}.privacy-card{padding:6rpx 8rpx 24rpx}.privacy-card .notice-title{font-size:27rpx}.consent-row{display:flex;align-items:flex-start;gap:10rpx;min-height:88rpx;margin-top:18rpx;padding:12rpx 0}.consent-checkbox{transform:scale(.85);transform-origin:left top}.consent-text{padding-top:2rpx;font-size:25rpx;line-height:1.65;color:#34475a}
-.save-button,.secondary-button,.clear-button{display:flex;width:100%;min-height:96rpx;align-items:center;justify-content:center;box-sizing:border-box;margin:0;padding:20rpx;border:0;border-radius:22rpx;font-size:30rpx;font-weight:600;line-height:1.4}.save-button{color:#fff;background:#087f86}.save-button.is-disabled{color:#657d82;background:#dce9eb}.secondary-button{margin-top:22rpx;background:#e1f5f5;color:#087f86}.clear-button{margin-top:22rpx;background:transparent;color:#a94451;font-size:25rpx;font-weight:500}.save-button::after,.secondary-button::after,.clear-button::after{border:0}.save-note{display:block;margin:14rpx 0;text-align:center;color:#657485;font-size:23rpx;line-height:1.5}.form-error{display:block;margin:0 8rpx 20rpx;color:#b12f3c;font-size:25rpx;line-height:1.6}.summary-line{display:block;margin-top:16rpx;font-size:27rpx;line-height:1.5}
+.date-field,.readonly-field{display:flex;align-items:center;justify-content:space-between;line-height:1.4}.readonly-field{background:#f1f5f6}.field-placeholder{color:#758390;font-size:25rpx}.chevron{color:#83939e;font-size:36rpx}.verified-label{font-size:23rpx;color:#16754b}.helper{display:block;margin-top:10rpx;color:#657485;font-size:24rpx;line-height:1.65}.validity-heading{display:flex;align-items:center;justify-content:space-between;gap:10rpx}.switch-row{display:flex;align-items:center;justify-content:flex-end}.switch-row .helper{margin:0}.area-fields{display:flex;gap:18rpx;margin-top:24rpx}.area-field{flex:1;min-width:0}.privacy-card{padding:18rpx 0 12rpx}.privacy-card .notice-title{font-size:27rpx}.consent-row{display:flex;align-items:flex-start;gap:10rpx;min-height:88rpx;margin-top:18rpx;padding:12rpx 0}.consent-checkbox{transform:scale(.85);transform-origin:left top}.consent-text{padding-top:2rpx;font-size:25rpx;line-height:1.65;color:#34475a}
+.save-button,.secondary-button,.clear-button{display:flex;width:100%;min-height:96rpx;align-items:center;justify-content:center;box-sizing:border-box;margin:0;padding:20rpx;border:0;border-radius:22rpx;font-size:30rpx;font-weight:600;line-height:1.4}.save-button{margin-top:14rpx;color:#fff;background:#087f86}.save-button.is-disabled{color:#657d82;background:#dce9eb}.secondary-button{margin-top:22rpx;background:#e1f5f5;color:#087f86}.clear-button{margin-top:22rpx;background:transparent;color:#a94451;font-size:25rpx;font-weight:500}.save-button::after,.secondary-button::after,.clear-button::after{border:0}.form-error{display:block;margin:0 8rpx 20rpx;color:#b12f3c;font-size:25rpx;line-height:1.6}.summary-line{display:block;margin-top:16rpx;font-size:27rpx;line-height:1.5}
 </style>

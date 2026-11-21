@@ -157,6 +157,7 @@ export interface ProviderIncomeData {
     can_withdraw: boolean
     unavailable_reason: string
     max_withdrawal_amount: number
+    withdrawal_cash_type?: 'T1' | 'D1' | ''
     withdrawals: ProviderWithdrawal[]
   }
   summary: {
